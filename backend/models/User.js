@@ -32,8 +32,8 @@ const userSchema = mongoose.Schema(
       enum: ['email', 'google'],
       default: 'email',
     },
-    resetPasswordToken: String,
-    resetPasswordExpires: Date,
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
   },
   {
     timestamps: true,

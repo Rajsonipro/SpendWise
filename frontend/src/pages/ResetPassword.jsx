@@ -1,12 +1,21 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { Lock, ArrowRight, CheckCircle, TrendingUp, Shield, Eye, EyeOff } from 'lucide-react';
+import {
+  Lock,
+  ArrowRight,
+  CheckCircle,
+  TrendingUp,
+  Shield,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ResetPassword = () => {
   const { token } = useParams();
   const navigate = useNavigate();
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -20,35 +29,67 @@ const ResetPassword = () => {
     e.preventDefault();
     setError('');
 
+    if (!token) {
+      setError('Reset token is missing. Please open the link again from your email.');
+      return;
+    }
+
     if (password.length < 6) {
-      return setError('Password must be at least 6 characters long.');
+      setError('Password must be at least 6 characters long.');
+      return;
     }
 
     if (password !== confirmPassword) {
-      return setError('Passwords do not match.');
+      setError('Passwords do not match.');
+      return;
     }
 
     setLoading(true);
     setMessage('');
 
+    // Debug logging
+    console.log('[ResetPassword] Token from URL params:', token.substring(0, 32) + '...');
+    console.log('[ResetPassword] Token length:', token.length);
+    console.log('[ResetPassword] API base URL:', api.defaults.baseURL);
+
     try {
-      await api.post(`/api/auth/reset-password/${token}`, { password });
+      const encodedToken = encodeURIComponent(token);
+      console.log('[ResetPassword] Sending POST to:', `/api/auth/reset-password/${encodedToken.substring(0, 32)}...`);
+
+      await api.post(`/api/auth/reset-password/${encodedToken}`, {
+        password,
+      });
+
       setSuccess(true);
       setMessage('Password reset successful!');
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => navigate('/login', { replace: true }), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong. The link may have expired.');
+      const serverMessage = err.response?.data?.message;
+      const statusCode = err.response?.status;
+
+      console.log('[ResetPassword] Request failed:');
+      console.log('  Status:', statusCode);
+      console.log('  Server message:', serverMessage);
+
+      if (statusCode === 400 && serverMessage?.toLowerCase().includes('expired')) {
+        setError('This reset link has expired. Please request a new password reset.');
+      } else if (statusCode === 400 && serverMessage?.toLowerCase().includes('invalid')) {
+        setError('This reset link is invalid. Please request a new password reset.');
+      } else {
+        setError(serverMessage || 'Something went wrong. The link may have expired. Please request a new reset link.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const passwordStrength = password.length >= 8 ? (password.length >= 12 ? 'strong' : 'medium') : 'weak';
+  const passwordStrength =
+    password.length >= 8 ? (password.length >= 12 ? 'strong' : 'medium') : 'weak';
+
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-6 overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-950">
-      {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-gradient-to-br from-indigo-200/30 to-purple-200/30 dark:from-indigo-500/10 dark:to-purple-500/10 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-gradient-to-br from-purple-200/30 to-pink-200/30 dark:from-purple-500/10 dark:to-pink-500/10 blur-3xl" />
@@ -61,7 +102,6 @@ const ResetPassword = () => {
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="relative w-full max-w-sm"
       >
-        {/* Logo */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -74,10 +114,11 @@ const ResetPassword = () => {
           <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
             SpendWise
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Financial Intelligence</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Financial Intelligence
+          </p>
         </motion.div>
 
-        {/* Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -119,11 +160,15 @@ const ResetPassword = () => {
                   />
                 </div>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/login', { replace: true })}
                   className="relative w-full py-3 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-300 overflow-hidden group"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    Go to Login <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                    Go to Login{' '}
+                    <ArrowRight
+                      size={16}
+                      className="group-hover:translate-x-0.5 transition-transform"
+                    />
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 </button>
@@ -149,7 +194,6 @@ const ResetPassword = () => {
                   </div>
                 </div>
 
-                {/* Error Message */}
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -8 }}
@@ -169,7 +213,10 @@ const ResetPassword = () => {
                       New Password
                     </label>
                     <div className="relative group">
-                      <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400 transition-colors duration-200" />
+                      <Lock
+                        size={16}
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400 transition-colors duration-200"
+                      />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
@@ -187,7 +234,7 @@ const ResetPassword = () => {
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                    {/* Password strength indicator */}
+
                     {password && (
                       <div className="mt-2 space-y-1.5">
                         <div className="flex gap-1">
@@ -196,7 +243,9 @@ const ResetPassword = () => {
                               key={level}
                               className={`h-1 flex-1 rounded-full transition-all duration-300 ${
                                 (level === 'weak' && passwordStrength === 'weak') ||
-                                (level === 'medium' && (passwordStrength === 'medium' || passwordStrength === 'strong')) ||
+                                (level === 'medium' &&
+                                  (passwordStrength === 'medium' ||
+                                    passwordStrength === 'strong')) ||
                                 (level === 'strong' && passwordStrength === 'strong')
                                   ? passwordStrength === 'strong'
                                     ? 'bg-emerald-500'
@@ -208,14 +257,20 @@ const ResetPassword = () => {
                             />
                           ))}
                         </div>
-                        <p className={`text-xs font-medium ${
-                          passwordStrength === 'strong' ? 'text-emerald-500' :
-                          passwordStrength === 'medium' ? 'text-amber-500' :
-                          'text-red-500'
-                        }`}>
-                          {passwordStrength === 'strong' ? 'Strong password' :
-                           passwordStrength === 'medium' ? 'Medium strength' :
-                           'Weak — add more characters'}
+                        <p
+                          className={`text-xs font-medium ${
+                            passwordStrength === 'strong'
+                              ? 'text-emerald-500'
+                              : passwordStrength === 'medium'
+                              ? 'text-amber-500'
+                              : 'text-red-500'
+                          }`}
+                        >
+                          {passwordStrength === 'strong'
+                            ? 'Strong password'
+                            : passwordStrength === 'medium'
+                            ? 'Medium strength'
+                            : 'Weak — add more characters'}
                         </p>
                       </div>
                     )}
@@ -226,7 +281,10 @@ const ResetPassword = () => {
                       Confirm Password
                     </label>
                     <div className="relative group">
-                      <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400 transition-colors duration-200" />
+                      <Lock
+                        size={16}
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400 transition-colors duration-200"
+                      />
                       <input
                         type={showConfirm ? 'text' : 'password'}
                         required
@@ -244,11 +302,18 @@ const ResetPassword = () => {
                         {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
+
                     {confirmPassword && (
-                      <p className={`mt-1.5 text-xs font-medium flex items-center gap-1 ${
-                        passwordsMatch ? 'text-emerald-500' : 'text-red-500'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${passwordsMatch ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                      <p
+                        className={`mt-1.5 text-xs font-medium flex items-center gap-1 ${
+                          passwordsMatch ? 'text-emerald-500' : 'text-red-500'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            passwordsMatch ? 'bg-emerald-500' : 'bg-red-500'
+                          }`}
+                        />
                         {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
                       </p>
                     )}
@@ -263,14 +328,30 @@ const ResetPassword = () => {
                       {loading ? (
                         <>
                           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              fill="none"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
                           </svg>
                           Updating...
                         </>
                       ) : (
                         <>
-                          Update Password <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                          Update Password{' '}
+                          <ArrowRight
+                            size={16}
+                            className="group-hover:translate-x-0.5 transition-transform"
+                          />
                         </>
                       )}
                     </span>
