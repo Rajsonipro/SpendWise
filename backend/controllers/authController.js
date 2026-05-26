@@ -170,9 +170,13 @@ export const forgotPassword = async (req, res) => {
 
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpires = expiry;
-    user.resetPasswordExpire = expiry;
 
     await user.save();
+
+    console.log('[ForgotPassword] Reset token generated for:', normalizedEmail);
+    console.log('[ForgotPassword] Raw token preview:', rawToken.substring(0, 16) + '...');
+    console.log('[ForgotPassword] Hashed token:', hashedToken);
+    console.log('[ForgotPassword] Expiry:', expiry);
 
     const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
     const resetUrl = `${frontendUrl}/reset-password/${encodeURIComponent(rawToken)}`;
@@ -183,7 +187,7 @@ export const forgotPassword = async (req, res) => {
       message: 'Password reset link sent to your registered email address.',
     });
   } catch (error) {
-    console.error('Forgot password error:', error);
+    console.error('[ForgotPassword] Error:', error);
     return res.status(500).json({
       message: 'An error occurred. Please try again later.',
     });
@@ -195,13 +199,20 @@ export const resetPassword = async (req, res) => {
     const { token } = req.params;
     const { password } = req.body;
 
+    console.log('[ResetPassword] === RESET PASSWORD ATTEMPT ===');
+    console.log('[ResetPassword] Token from params (first 32 chars):', token ? token.substring(0, 32) + '...' : 'MISSING');
+    console.log('[ResetPassword] Token length:', token ? token.length : 0);
+    console.log('[ResetPassword] Password provided:', !!password);
+
     if (!token) {
+      console.log('[ResetPassword] FAILED: Token is missing from request params');
       return res.status(400).json({
         message: 'Reset token is required.',
       });
     }
 
     if (!password || password.length < 6) {
+      console.log('[ResetPassword] FAILED: Password too short or missing');
       return res.status(400).json({
         message: 'Password must be at least 6 characters long.',
       });
@@ -210,32 +221,71 @@ export const resetPassword = async (req, res) => {
     const hashedToken = hashToken(token);
     const now = new Date();
 
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      $or: [
-        { resetPasswordExpires: { $gt: now } },
-        { resetPasswordExpire: { $gt: now } },
-      ],
-    });
+    console.log('[ResetPassword] Hashed token used for query:', hashedToken);
+    console.log('[ResetPassword] Current server time:', now.toISOString());
 
-    if (!user) {
+    // First check: find user by hashed token (ignoring expiry) to determine exact failure reason
+    const userByToken = await User.findOne({ resetPasswordToken: hashedToken });
+
+    if (!userByToken) {
+      console.log('[ResetPassword] FAILED: No user found with matching hashed token');
+
+      // Check if there's a user with ANY reset token (for debugging)
+      const anyUserWithToken = await User.findOne({
+        resetPasswordToken: { $ne: null, $exists: true },
+      }).select('email resetPasswordToken resetPasswordExpires');
+
+      if (anyUserWithToken) {
+        console.log('[ResetPassword] Debug - A user with a reset token exists:', {
+          email: anyUserWithToken.email,
+          storedTokenHash: anyUserWithToken.resetPasswordToken,
+          tokenExpires: anyUserWithToken.resetPasswordExpires,
+          now: now.toISOString(),
+          isExpired: anyUserWithToken.resetPasswordExpires
+            ? anyUserWithToken.resetPasswordExpires < now
+            : 'N/A',
+        });
+        console.log('[ResetPassword] Token hash mismatch!');
+        console.log('[ResetPassword]   Expected hash:', hashedToken);
+        console.log('[ResetPassword]   Stored hash:  ', anyUserWithToken.resetPasswordToken);
+        console.log('[ResetPassword]   Hashes match:', hashedToken === anyUserWithToken.resetPasswordToken);
+      } else {
+        console.log('[ResetPassword] Debug - No users with any reset token found in DB');
+      }
+
       return res.status(400).json({
         message: 'Invalid or expired reset token.',
       });
     }
 
-    user.password = password;
-    user.resetPasswordToken = null;
-    user.resetPasswordExpires = null;
-    user.resetPasswordExpire = null;
+    // Second check: verify token has NOT expired
+    if (
+      userByToken.resetPasswordExpires &&
+      userByToken.resetPasswordExpires < now
+    ) {
+      console.log('[ResetPassword] FAILED: Token has expired');
+      console.log('[ResetPassword]   Token expiry was:', userByToken.resetPasswordExpires.toISOString());
+      console.log('[ResetPassword]   Current time:', now.toISOString());
+      return res.status(400).json({
+        message: 'This reset link has expired. Please request a new password reset.',
+      });
+    }
 
-    await user.save();
+    console.log('[ResetPassword] SUCCESS: Token validated, updating password for:', userByToken.email);
+
+    userByToken.password = password;
+    userByToken.resetPasswordToken = null;
+    userByToken.resetPasswordExpires = null;
+
+    await userByToken.save();
+
+    console.log('[ResetPassword] Password updated successfully for:', userByToken.email);
 
     return res.json({
       message: 'Password reset successful. You can now log in with your new password.',
     });
   } catch (error) {
-    console.error('Reset password error:', error);
+    console.error('[ResetPassword] UNEXPECTED ERROR:', error);
     return res.status(500).json({
       message: 'An error occurred. Please try again later.',
     });

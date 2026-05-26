@@ -48,33 +48,50 @@ const ResetPassword = () => {
     setMessage('');
 
     // Debug logging
+    console.log('[ResetPassword] === ATTEMPTING PASSWORD RESET ===');
     console.log('[ResetPassword] Token from URL params:', token.substring(0, 32) + '...');
     console.log('[ResetPassword] Token length:', token.length);
+    console.log('[ResetPassword] Token chars (all hex?):', /^[0-9a-f]+$/i.test(token));
     console.log('[ResetPassword] API base URL:', api.defaults.baseURL);
 
     try {
       const encodedToken = encodeURIComponent(token);
+      console.log('[ResetPassword] Encoded token same as raw?:', encodedToken === token);
       console.log('[ResetPassword] Sending POST to:', `/api/auth/reset-password/${encodedToken.substring(0, 32)}...`);
 
-      await api.post(`/api/auth/reset-password/${encodedToken}`, {
+      const { data } = await api.post(`/api/auth/reset-password/${encodedToken}`, {
         password,
       });
 
+      console.log('[ResetPassword] SUCCESS:', data.message);
       setSuccess(true);
       setMessage('Password reset successful!');
       setTimeout(() => navigate('/login', { replace: true }), 3000);
     } catch (err) {
-      const serverMessage = err.response?.data?.message;
+      const hasResponse = !!err.response;
       const statusCode = err.response?.status;
+      const serverMessage = err.response?.data?.message;
+      const responseData = err.response?.data;
 
-      console.log('[ResetPassword] Request failed:');
-      console.log('  Status:', statusCode);
+      console.log('[ResetPassword] REQUEST FAILED');
+      console.log('  Has response from server:', hasResponse);
+      console.log('  Status code:', statusCode);
       console.log('  Server message:', serverMessage);
+      console.log('  Full response data:', JSON.stringify(responseData));
 
-      if (statusCode === 400 && serverMessage?.toLowerCase().includes('expired')) {
+      if (!hasResponse) {
+        // Network error - server might be down or CORS issue
+        console.error('[ResetPassword] Network error - no response received:', err.message);
+        console.error('[ResetPassword] Check that the backend server is running and reachable at:', api.defaults.baseURL);
+        setError('Unable to connect to the server. Please make sure the backend is running and try again.');
+      } else if (statusCode === 400 && serverMessage?.toLowerCase().includes('expired')) {
         setError('This reset link has expired. Please request a new password reset.');
       } else if (statusCode === 400 && serverMessage?.toLowerCase().includes('invalid')) {
         setError('This reset link is invalid. Please request a new password reset.');
+      } else if (statusCode === 400) {
+        setError(serverMessage || 'Invalid request. Please try again.');
+      } else if (statusCode === 500) {
+        setError(serverMessage || 'Server error. Please try again later.');
       } else {
         setError(serverMessage || 'Something went wrong. The link may have expired. Please request a new reset link.');
       }
