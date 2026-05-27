@@ -691,4 +691,17 @@
     font-weight: 700;
     line-height: 1;
   }
+  .google-btn-wrapper {
+  width: 100%;
+}
+
+.google-btn-wrapper > div {
+  width: 100% !important;
+}
+
+.google-btn-wrapper iframe {
+  width: 100% !important;
+  min-width: 100% !important;
+  display: block !important;
+}
 }
