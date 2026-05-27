@@ -700,7 +700,7 @@
 }
 
 .google-btn-wrapper iframe {
-  width: 100% !important;
+  width: 320% !important;
   min-width: 100% !important;
   display: block !important;
 }
