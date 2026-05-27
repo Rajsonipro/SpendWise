@@ -31,6 +31,7 @@ import {
 import { formatINR } from '../utils/formatters';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'framer-motion';
+import { SkeletonBox, SkeletonStatCard, SkeletonChart, SkeletonPageHeader } from '../components/Skeleton';
 
 const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#8b5cf6'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -238,18 +239,49 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="space-y-6">
+        <SkeletonPageHeader />
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 skeleton" />
-          ))}
+          <SkeletonStatCard delay={0} />
+          <SkeletonStatCard delay={0.06} />
+          <SkeletonStatCard delay={0.12} />
+          <SkeletonStatCard delay={0.18} />
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
           <div className="xl:col-span-7 space-y-5">
-            <div className="h-[380px] skeleton" />
-            <div className="h-[380px] skeleton" />
+            <SkeletonChart height="h-[380px]" delay={0.08} />
+            <SkeletonChart height="h-[380px]" delay={0.12} />
           </div>
-          <div className="xl:col-span-5">
-            <div className="h-[380px] skeleton" />
+          <div className="xl:col-span-5 space-y-5">
+            <SkeletonChart height="h-[380px]" delay={0.16} />
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="card"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <SkeletonBox className="w-10 h-10 rounded-lg" />
+                <SkeletonBox className="h-5 w-36 rounded-md" />
+              </div>
+              <div className="space-y-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.25 + i * 0.04 }}
+                    className="flex items-center gap-3 p-2.5"
+                  >
+                    <SkeletonBox className="w-9 h-9 rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <SkeletonBox className="h-4 w-32 rounded-md" />
+                      <SkeletonBox className="h-3 w-20 rounded-md" />
+                    </div>
+                    <SkeletonBox className="h-5 w-20 rounded-md shrink-0" />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </div>
         </div>
       </div>
@@ -258,19 +290,25 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page intro */}
+      {/* Page header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="flex items-center gap-3 flex-wrap"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
-        <Link to="/transactions" className="btn-primary text-sm shadow-lg shadow-indigo-500/20">
-          <Plus size={16} /> Add Transaction
-        </Link>
-        <button onClick={downloadCSV} className="btn-secondary text-sm">
-          <Download size={16} /> Export CSV
-        </button>
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Your financial overview for this month</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to="/transactions" className="btn-primary text-sm shadow-lg shadow-indigo-500/20">
+            <Plus size={16} /> Add Transaction
+          </Link>
+          <button onClick={downloadCSV} className="btn-secondary text-sm">
+            <Download size={16} /> Export CSV
+          </button>
+        </div>
       </motion.div>
 
       {/* Stats Cards */}

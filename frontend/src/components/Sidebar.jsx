@@ -53,7 +53,7 @@ function Logo({ collapsed }) {
           transition={{ duration: 0.15 }}
         >
           <h2 className="text-base font-bold text-[var(--sidebar-active)] tracking-tight">SpendWise</h2>
-          <p className="text-[10px] font-medium text-[var(--sidebar-text)] tracking-wide">Premium Finance</p>
+          <p className="text-[10px] font-medium text-[var(--sidebar-text)] tracking-wide">Smart Finance</p>
         </motion.div>
       )}
     </div>
@@ -192,9 +192,9 @@ const Sidebar = ({ mobileOpen = false, onClose = () => {} }) => {
         <div className="relative z-10">
           {!collapsed && (
             <div className="px-5 pb-2">
-              <div className="flex items-center gap-1.5 text-[10px] font-medium text-[var(--sidebar-text)] opacity-50">
+              <div className="flex items-center gap-1.5 text-[10px] font-medium text-[var(--sidebar-text)] opacity-40">
                 <Sparkles size={10} />
-                <span>AI-Powered Finance Tracking</span>
+                <span>AI-Powered Insights</span>
               </div>
             </div>
           )}

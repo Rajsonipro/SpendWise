@@ -4,10 +4,12 @@ import { AlertCircle, CheckCircle, Target, Wallet, TrendingUp } from 'lucide-rea
 import { formatINR } from '../utils/formatters';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
+import { SkeletonBox, SkeletonPageHeader } from '../components/Skeleton';
 
 const Budget = () => {
   const [budget, setBudget] = useState(null);
   const [limitAmount, setLimitAmount] = useState('');
+  const [loading, setLoading] = useState(true);
   const { isDark } = useTheme();
 
   const now = new Date();
@@ -25,6 +27,7 @@ const Budget = () => {
 
   const fetchBudget = async () => {
     try {
+      setLoading(true);
       const { data } = await api.get(
         `/api/budget?month=${selectedMonthNum}&year=${selectedYear}`
       );
@@ -34,6 +37,8 @@ const Budget = () => {
     } catch (error) {
       console.error(error);
       setBudget(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,16 +85,20 @@ const Budget = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <h1 className="page-title">Monthly Budget</h1>
-        <p className="page-subtitle">
-          {monthNames[selectedMonthNum - 1]} {selectedYear} — Manage your spending limits
-        </p>
-      </motion.div>
+      {loading ? (
+        <SkeletonPageHeader />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <h1 className="page-title">Monthly Budget</h1>
+          <p className="page-subtitle">
+            {monthNames[selectedMonthNum - 1]} {selectedYear} — Manage your spending limits
+          </p>
+        </motion.div>
+      )}
 
       {/* Set Budget Card */}
       <motion.div
@@ -159,7 +168,38 @@ const Budget = () => {
         </div>
       </motion.div>
 
-      {budget && (
+      {loading ? (
+        <div className="space-y-5">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08, duration: 0.35 }}
+            className="grid grid-cols-2 gap-4"
+          >
+            <div className="card">
+              <SkeletonBox className="h-4 w-12 rounded-md mb-3" />
+              <SkeletonBox className="h-8 w-24 rounded-lg" />
+            </div>
+            <div className="card">
+              <SkeletonBox className="h-4 w-12 rounded-md mb-3" />
+              <SkeletonBox className="h-8 w-24 rounded-lg" />
+            </div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, duration: 0.35 }}
+            className="card"
+          >
+            <SkeletonBox className="h-5 w-32 rounded-md mb-4" />
+            <SkeletonBox className="h-3 w-full rounded-full mb-3" />
+            <div className="flex justify-between">
+              <SkeletonBox className="h-3 w-16 rounded-md" />
+              <SkeletonBox className="h-3 w-20 rounded-md" />
+            </div>
+          </motion.div>
+        </div>
+      ) : budget ? (
         <div className="space-y-5">
           {/* Stats Cards */}
           <motion.div
@@ -331,7 +371,7 @@ const Budget = () => {
             )}
           </motion.div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

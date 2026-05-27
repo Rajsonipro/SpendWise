@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { formatINR } from '../utils/formatters';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SkeletonSubCard } from '../components/Skeleton';
 
 const popularSubscriptions = [
   'Netflix',
@@ -223,9 +224,10 @@ const Subscriptions = () => {
         <div className="lg:col-span-2">
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-40 skeleton" />
-              ))}
+              <SkeletonSubCard delay={0} />
+              <SkeletonSubCard delay={0.05} />
+              <SkeletonSubCard delay={0.1} />
+              <SkeletonSubCard delay={0.15} />
             </div>
           ) : subscriptions.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

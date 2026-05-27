@@ -5,6 +5,7 @@ import { formatINR } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 import ReceiptScanner from '../components/ReceiptScanner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SkeletonTableRow, SkeletonMobileRow, SkeletonPageHeader } from '../components/Skeleton';
 
 const Transactions = () => {
   const { user } = useAuth();
@@ -342,11 +343,20 @@ const Transactions = () => {
         )}
 
         {loading && (
-          <div className="p-6 space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-12 skeleton" />
-            ))}
-          </div>
+          <>
+            {/* Desktop skeleton table */}
+            <div className="hidden lg:block">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTableRow key={i} cols={5} delay={0.05 * i} />
+              ))}
+            </div>
+            {/* Mobile skeleton cards */}
+            <div className="lg:hidden p-3 space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonMobileRow key={i} delay={0.05 * i} />
+              ))}
+            </div>
+          </>
         )}
       </motion.div>
 

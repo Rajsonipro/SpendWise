@@ -22,6 +22,7 @@ import {
 import { formatINR } from '../utils/formatters';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
+import { SkeletonStatCard, SkeletonChart, SkeletonPageHeader } from '../components/Skeleton';
 
 const COLORS = [
   '#6366f1',
@@ -78,9 +79,11 @@ const Analytics = () => {
   const [transactions, setTransactions] = useState([]);
   const [forecast, setForecast] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
 
   const chartGrid = isDark ? '#1e293b' : '#e8edf4';
   const chartText = isDark ? '#64748b' : '#94a3b8';
+  const pageLoading = transactionsLoading || forecastLoading;
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -90,6 +93,8 @@ const Analytics = () => {
       } catch (error) {
         console.error('Transaction fetch error:', error);
         setTransactions([]);
+      } finally {
+        setTransactionsLoading(false);
       }
     };
 
@@ -144,6 +149,27 @@ const Analytics = () => {
     fetchTransactions();
     fetchForecast();
   }, []);
+
+  if (pageLoading) {
+    return (
+      <div className="space-y-6">
+        <SkeletonPageHeader />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SkeletonStatCard delay={0} />
+          <SkeletonStatCard delay={0.06} />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-1">
+            <SkeletonChart height="h-[460px]" delay={0.1} />
+          </div>
+          <div className="lg:col-span-2">
+            <SkeletonChart height="h-[420px]" delay={0.12} />
+          </div>
+        </div>
+        <SkeletonChart height="h-[300px]" delay={0.16} />
+      </div>
+    );
+  }
 
   const expenses = Array.isArray(transactions)
     ? transactions.filter(
@@ -218,7 +244,7 @@ const Analytics = () => {
         transition={{ duration: 0.4 }}
       >
         <h1 className="page-title">Analytics</h1>
-        <p className="page-subtitle">Spending patterns and AI-powered forecasts</p>
+        <p className="page-subtitle">Spending patterns and AI-powered insights</p>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -247,98 +273,81 @@ const Analytics = () => {
           </div>
         </motion.div>
 
-        <div>
-          {forecastLoading ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="card relative overflow-hidden"
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="card relative overflow-hidden"
+        >
+          <div className="absolute -right-8 -top-8 opacity-[0.04]">
+            <Sparkles size={120} />
+          </div>
+
+          <div className="flex items-center gap-4 relative z-10">
+            <div
+              className="p-3 rounded-xl shadow-lg shadow-purple-500/20"
+              style={{
+                background:
+                  forecast?.status === 'Over Budget Projected'
+                    ? 'linear-gradient(135deg, var(--color-danger) 0%, #ef4444 100%)'
+                    : 'linear-gradient(135deg, var(--color-success) 0%, #10b981 100%)',
+              }}
             >
-              <div className="animate-pulse">
-                <div className="h-20 bg-[var(--app-accent-soft)] rounded-xl" />
-                <div className="mt-4 h-4 w-2/3 bg-[var(--app-accent-soft)] rounded" />
-                <div className="mt-2 h-4 w-1/2 bg-[var(--app-accent-soft)] rounded" />
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="card relative overflow-hidden"
-            >
-              <div className="absolute -right-8 -top-8 opacity-[0.04]">
-                <Sparkles size={120} />
-              </div>
+              <Sparkles size={20} className="text-white" />
+            </div>
 
-              <div className="flex items-center gap-4 relative z-10">
-                <div
-                  className="p-3 rounded-xl shadow-lg shadow-purple-500/20"
-                  style={{
-                    background:
-                      forecast?.status === 'Over Budget Projected'
-                        ? 'linear-gradient(135deg, var(--color-danger) 0%, #ef4444 100%)'
-                        : 'linear-gradient(135deg, var(--color-success) 0%, #10b981 100%)',
-                  }}
-                >
-                  <Sparkles size={20} className="text-white" />
-                </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[var(--app-text-secondary)] uppercase tracking-wider">
+                AI Spending Forecast
+              </p>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-[var(--app-text-secondary)] uppercase tracking-wider">
-                    AI Spending Forecast
-                  </p>
+              {showForecastValue ? (
+                <p className="text-2xl font-bold text-[var(--app-text)] mt-1">
+                  {formatINR(Number(forecast.forecastedTotal))}
+                </p>
+              ) : (
+                <p className="text-2xl font-bold text-[var(--app-text)] mt-1">
+                  No spending data available
+                </p>
+              )}
 
-                  {showForecastValue ? (
-                    <p className="text-2xl font-bold text-[var(--app-text)] mt-1">
-                      {formatINR(Number(forecast.forecastedTotal))}
-                    </p>
-                  ) : (
-                    <p className="text-2xl font-bold text-[var(--app-text)] mt-1">
-                      No spending data available
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
-                    {forecast?.hasSpending ? (
-                      <>
-                        {forecast.status === 'Over Budget Projected' ? (
-                          <span
-                            className="badge text-[10px]"
-                            style={{
-                              background: 'var(--color-danger-soft)',
-                              color: 'var(--color-danger)',
-                            }}
-                          >
-                            <AlertTriangle size={10} /> Over Budget Warning
-                          </span>
-                        ) : (
-                          <span
-                            className="badge text-[10px]"
-                            style={{
-                              background: 'var(--color-success-soft)',
-                              color: 'var(--color-success)',
-                            }}
-                          >
-                            Safe spending
-                          </span>
-                        )}
-                        <span className="text-xs text-[var(--app-text-secondary)]">
-                          End of month projection
-                        </span>
-                      </>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {forecast?.hasSpending ? (
+                  <>
+                    {forecast.status === 'Over Budget Projected' ? (
+                      <span
+                        className="badge text-[10px]"
+                        style={{
+                          background: 'var(--color-danger-soft)',
+                          color: 'var(--color-danger)',
+                        }}
+                      >
+                        <AlertTriangle size={10} /> Over Budget Warning
+                      </span>
                     ) : (
-                      <span className="text-xs text-[var(--app-text-secondary)]">
-                        No spending data available
+                      <span
+                        className="badge text-[10px]"
+                        style={{
+                          background: 'var(--color-success-soft)',
+                          color: 'var(--color-success)',
+                        }}
+                      >
+                        Safe spending
                       </span>
                     )}
-                  </div>
-                </div>
+                    <span className="text-xs text-[var(--app-text-secondary)]">
+                      End of month projection
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-[var(--app-text-secondary)]">
+                    No spending data available
+                  </span>
+                )}
               </div>
-            </motion.div>
-          )}
-        </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

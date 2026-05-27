@@ -1,5 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { useAuth } from './context/AuthContext';
+import PageTransition from './components/PageTransition';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -12,19 +14,54 @@ import Budget from './pages/Budget';
 import Subscriptions from './pages/Subscriptions';
 import Layout from './components/Layout';
 
-function App() {
+function AppRoutes() {
   const { user } = useAuth();
-  
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={!user ? <Landing /> : <Navigate to="/dashboard" />} />
-        <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
-        <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+  const location = useLocation();
 
-        
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route
+          path="/"
+          element={
+            <PageTransition>
+              {!user ? <Landing /> : <Navigate to="/dashboard" />}
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <PageTransition>
+              {!user ? <Login /> : <Navigate to="/dashboard" />}
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PageTransition>
+              {!user ? <Register /> : <Navigate to="/dashboard" />}
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PageTransition>
+              <ForgotPassword />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/reset-password/:token"
+          element={
+            <PageTransition>
+              <ResetPassword />
+            </PageTransition>
+          }
+        />
+
         {/* Protected Routes */}
         <Route element={user ? <Layout /> : <Navigate to="/login" />}>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -34,6 +71,14 @@ function App() {
           <Route path="/subscriptions" element={<Subscriptions />} />
         </Route>
       </Routes>
+    </AnimatePresence>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppRoutes />
     </Router>
   );
 }

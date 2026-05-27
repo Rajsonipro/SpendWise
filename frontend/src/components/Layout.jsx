@@ -1,13 +1,28 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import AIChatBot from './AIChatBot';
 import { useTheme } from '../context/ThemeContext';
 import { Menu, Moon, Sun } from 'lucide-react';
-import { motion } from 'framer-motion';
+
+const pageTransition = {
+  initial: { opacity: 0, y: 12 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] },
+  },
+};
 
 const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
   const { isDark, toggleTheme, mounted } = useTheme();
 
   if (!mounted) return null;
@@ -52,7 +67,17 @@ const Layout = () => {
 
         <main className="flex-1 overflow-y-auto p-5 md:p-8">
           <div className="max-w-[1480px] mx-auto">
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                variants={pageTransition}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>
