@@ -10,9 +10,10 @@ const connectDB = async () => {
   // Try connecting to MongoDB Atlas if URI is provided
   if (uri) {
     try {
-      // Set a shorter timeout for the initial connection attempt so it doesn't hang the app
+      // Allow enough time for Render's cold starts (Free tier can be slow)
       const conn = await mongoose.connect(uri, {
-        serverSelectionTimeoutMS: 5000, // 5 seconds timeout
+        serverSelectionTimeoutMS: 30000, // 30 seconds — Render cold starts can be slow
+        socketTimeoutMS: 45000,          // Close sockets after 45s of inactivity
       });
 
       console.log(`MongoDB Connected: ${conn.connection.host}`);

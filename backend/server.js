@@ -5,6 +5,14 @@ import morgan from 'morgan';
 import connectDB from './config/db.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
+// Determine allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://spend-wise-rouge.vercel.app',
+  process.env.FRONTEND_URL?.replace(/\/+$/, ''),
+].filter(Boolean);
+
 import authRoutes from './routes/authRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import budgetRoutes from './routes/budgetRoutes.js';
@@ -19,7 +27,22 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(null, true); // In production, change to: callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
+
+app.options('*', cors()); // Pre-flight for all routes
 app.use(express.json({ limit: '50mb' }));
 
 if (process.env.NODE_ENV === 'development') {

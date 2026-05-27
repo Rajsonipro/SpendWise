@@ -4,7 +4,11 @@ import crypto from 'crypto';
 import User from '../models/User.js';
 import { sendPasswordResetEmail } from '../utils/emailService.js';
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  'postmessage'
+);
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
@@ -95,6 +99,7 @@ export const googleLogin = async (req, res) => {
       return res.status(400).json({ message: 'Google credential is required' });
     }
 
+    // Verify the Google ID token
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -102,6 +107,10 @@ export const googleLogin = async (req, res) => {
 
     const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Google OAuth verified successfully');
+    }
 
     if (!email) {
       return res
@@ -138,7 +147,13 @@ export const googleLogin = async (req, res) => {
       token: generateToken(user._id),
     });
   } catch (error) {
-    console.error('Google login error:', error);
+    console.error('Google login error details:', {
+      message: error.message,
+      stack: process.env.NODE_ENV === 'production' ? null : error.stack,
+      hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasGoogleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      googleClientIdLength: process.env.GOOGLE_CLIENT_ID?.length || 0,
+    });
     return res
       .status(401)
       .json({ message: 'Google authentication failed: ' + error.message });

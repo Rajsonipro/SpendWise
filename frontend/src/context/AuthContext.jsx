@@ -24,22 +24,31 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const handleAuthResponse = (data) => {
+    if (!data.token) {
+      throw new Error('No authentication token received from server');
+    }
+    localStorage.setItem('userInfo', JSON.stringify(data));
+    setUser(data);
+    return data;
+  };
+
   const login = async (email, password) => {
     const { data } = await api.post('/api/auth/login', { email, password });
-    setUser(data);
-    localStorage.setItem('userInfo', JSON.stringify(data));
+    return handleAuthResponse(data);
   };
 
   const googleLogin = async (credential) => {
+    if (!credential) {
+      throw new Error('Google credential is missing — check VITE_GOOGLE_CLIENT_ID is set');
+    }
     const { data } = await api.post('/api/auth/google', { credential });
-    setUser(data);
-    localStorage.setItem('userInfo', JSON.stringify(data));
+    return handleAuthResponse(data);
   };
 
   const register = async (name, email, password) => {
     const { data } = await api.post('/api/auth/register', { name, email, password });
-    setUser(data);
-    localStorage.setItem('userInfo', JSON.stringify(data));
+    return handleAuthResponse(data);
   };
 
   const logout = () => {
