@@ -5,3 +5,5 @@
 [32m[nodemon] starting `node server.js`[39m
 Server running in development mode on port 5003
 MongoDB Connected: ac-gnqitgp-shard-00-00.r6ha94d.mongodb.net
+[0mPOST /api/auth/send-login-otp [33m401[0m 208.882 ms - 40[0m
+[0mPOST /api/auth/send-login-otp [33m401[0m 357.863 ms - 40[0m
