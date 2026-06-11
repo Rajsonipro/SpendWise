@@ -1,105 +1,206 @@
-# TrackIt - MERN Expense Tracker
+# 💸 SpendWise
 
-A modern, responsive, and fully-featured expense tracker built with the MERN stack (MongoDB, Express, React, Node.js). Designed to be clean, fast, and secure.
+<div align="center">
 
-## Features
-- **User Authentication**: Secure JWT-based login and registration (hashed with bcrypt).
-- **Dashboard**: High-level overview of income, expenses, and balance with recent transactions and charts.
-- **Transaction Management**: Add, view, delete, and filter transactions by type and date.
-- **Analytics**: Category-wise pie chart breakdown to easily understand spending habits.
-- **Budget Tracking**: Set a monthly budget and visually track progression with dynamic alerts.
-- **Export**: Download transaction data in CSV and PDF formats cleanly.
-- **Responsive & Dark Mode**: Professional, glassmorphic UI built using Tailwind CSS that works beautifully on all devices.
+# 🚀 SpendWise – AI Powered Expense Tracker
 
-## Tech Stack
-- Frontend: React (Vite), Tailwind CSS, Recharts, React Router
-- Backend: Node.js, Express, MongoDB (Mongoose), JWT
-- Export Utilities: json2csv, pdfkit
+### Track Expenses • Manage Budgets • Analyze Spending • AI Receipt Scanning
 
-## Project Structure
-```text
-expense_tracker/
+![React](https://img.shields.io/badge/React-19-blue?logo=react)
+![Node.js](https://img.shields.io/badge/Node.js-Backend-green?logo=node.js)
+![MongoDB](https://img.shields.io/badge/MongoDB-Database-green?logo=mongodb)
+![Vercel](https://img.shields.io/badge/Vercel-Frontend-black?logo=vercel)
+![Render](https://img.shields.io/badge/Render-Backend-46E3B7?logo=render)
+![License](https://img.shields.io/badge/License-MIT-purple)
+
+</div>
+
+---
+
+## ✨ Features
+
+### 📊 Expense Management
+- ➕ Add expenses & income
+- ✏️ Edit transactions
+- 🗑️ Delete transactions
+- 🏷️ Category-based tracking
+- 📅 Date-wise filtering
+
+### 🤖 AI Features
+- 📸 AI Receipt Scanner
+- 🧠 Smart Spending Forecast
+- 💡 AI Insights & Analytics
+
+### 💰 Budget Management
+- Monthly budgets
+- Budget progress tracking
+- Overspending alerts
+
+### 🔄 Subscription Tracking
+- Netflix, Spotify, Gym etc.
+- Monthly commitment calculator
+- Upcoming renewal reminders
+
+### 📈 Analytics
+- Pie charts
+- Spending trends
+- Category analysis
+- Financial insights
+
+### 🔐 Authentication
+- Email & Password Login
+- Google Authentication
+- Forgot Password
+- Reset Password via Email
+- JWT Security
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- ⚛️ React
+- 🎨 Tailwind CSS
+- 🎭 Framer Motion
+- 📊 Recharts
+- 🔗 Axios
+
+### Backend
+- 🟢 Node.js
+- 🚂 Express.js
+- 🔑 JWT Authentication
+- 📧 Nodemailer
+
+### Database
+- 🍃 MongoDB Atlas
+
+---
+
+## 📂 Project Structure
+
+```bash
+SpendWise/
+├── frontend/
 ├── backend/
-│   ├── config/       # MongoDB Connect
-│   ├── controllers/  # API logic
-│   ├── middleware/   # Auth and Error Handling
-│   ├── models/       # Mongoose Schemas (User, Transaction, Budget)
-│   ├── routes/       # Express Router
-│   ├── .env.example
-│   ├── server.js     # Entry point
-│   └── package.json
-└── frontend/
-    ├── src/
-    │   ├── components/
-    │   ├── context/
-    │   ├── pages/
-    │   ├── utils/
-    │   ├── App.jsx
-    │   └── main.jsx
-    ├── tailwind.config.js
-    └── package.json
+├── README.md
+└── package.json
 ```
 
-## Setup Instructions
+---
 
-### 1. Backend Setup
-1. Open a terminal and navigate to the `backend` folder:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file from the example:
-   ```bash
-   copy .env.example .env
-   ```
-4. Update the `.env` file with your MongoDB URI.
-5. Start the backend DEV server:
-   ```bash
-   npm run dev
-   ```
+## ⚙️ Local Setup
 
-### 2. Frontend Setup
-1. Open another terminal and navigate to the `frontend` folder:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the Vite React app:
-   ```bash
-   npm run dev
-   ```
+### 1️⃣ Clone Repository
 
-### 3. Usage
-- Go to `http://localhost:3000` (or the URL Vite provides).
-- Register a new account.
-- Add some transactions to see charts and summaries!
-
-## Sample JSON Responses
-
-### GET /api/transactions
-```json
-[
-  {
-    "_id": "64f1c...",
-    "userId": "...",
-    "title": "Grocery",
-    "amount": 150.50,
-    "type": "expense",
-    "category": "Food",
-    "date": "2026-05-13T00:00:00.000Z"
-  }
-]
+```bash
+git clone <your-repo-url>
+cd SpendWise
 ```
 
-## Basic Validation Rules
-- **Authentication**: Email must be unique. Passwords must be valid (could be enforced to 6+ chars easily).
-- **Transactions**: Amount must be numerical. Title, Type, Category, and Date are required.
-- **Budgets**: Month and Year must be provided; one budget per month per user.
+### 2️⃣ Backend Setup
 
-Enjoy tracking your expenses!
+```bash
+cd backend
+npm install
+```
+
+Create `.env`
+
+```env
+PORT=5003
+MONGO_URI=YOUR_MONGODB_URI
+JWT_SECRET=YOUR_SECRET
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=yourgmail@gmail.com
+SMTP_PASS=your_app_password
+FRONTEND_URL=http://localhost:3000
+```
+
+Run:
+
+```bash
+npm run dev
+```
+
+### 3️⃣ Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## 🌐 Frontend Deployment (Vercel)
+
+1. Push project to GitHub
+2. Import project in Vercel
+3. Select frontend folder
+4. Deploy
+
+Environment Variables:
+
+```env
+VITE_API_URL=https://your-render-backend.onrender.com
+```
+
+---
+
+## 🚀 Backend Deployment (Render)
+
+1. Create Web Service
+2. Connect GitHub Repository
+3. Select backend folder
+4. Add Environment Variables
+5. Deploy
+
+Required Variables:
+
+```env
+MONGO_URI=
+JWT_SECRET=
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+FRONTEND_URL=
+```
+
+---
+
+## 📧 Forgot Password Setup
+
+### Gmail SMTP
+
+Enable:
+- ✅ 2-Step Verification
+- ✅ App Password
+
+Use:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=yourgmail@gmail.com
+SMTP_PASS=your_app_password
+```
+
+---
+
+## 📱 Future Improvements
+
+- 🔔 Push Notifications
+- 📉 Advanced Forecasting
+- 🌍 Multi Currency Support
+- 📄 Export PDF Reports
+- 🏦 Bank Integration
+
+---
+
+## 👨‍💻 Author
+
+**Raj Soni**
+
+⭐ If you like this project, give it a star on GitHub!

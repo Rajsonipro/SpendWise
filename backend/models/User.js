@@ -34,6 +34,9 @@ const userSchema = mongoose.Schema(
     },
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
+    loginOTP: { type: String, default: null },
+    loginOTPExpires: { type: Date, default: null },
+    loginOTPAttempts: { type: Number, default: 0 },
   },
   {
     timestamps: true,

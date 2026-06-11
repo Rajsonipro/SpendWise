@@ -6,6 +6,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
         'app-bg': 'var(--app-bg)',
@@ -45,6 +46,7 @@ export default {
         elevated: 'var(--shadow-elevated)',
         glass: 'var(--shadow-glass)',
         glow: 'var(--shadow-glow)',
+        'glow-strong': 'var(--shadow-glow-strong)',
       },
       borderRadius: {
         '2xl': '1rem',
@@ -63,6 +65,7 @@ export default {
         'float': 'float 6s ease-in-out infinite',
         'scan-line': 'scanLine 2s ease-in-out infinite',
         'spin-slow': 'spin 3s linear infinite',
+        'glow-pulse': 'glowPulse 2s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -104,6 +107,10 @@ export default {
         scanLine: {
           '0%': { top: '0%' },
           '100%': { top: '100%' },
+        },
+        glowPulse: {
+          '0%, 100%': { boxShadow: '0 0 20px rgba(129, 140, 248, 0.15)' },
+          '50%': { boxShadow: '0 0 40px rgba(129, 140, 248, 0.3)' },
         },
       },
     },

@@ -1,7 +1,0 @@
-
-❌ Port 5003 is already in use.
-   Another backend is already running, or a previous one did not exit.
-   Fix: close the other terminal, or run:
-   netstat -ano | findstr :5003
-   taskkill /PID <pid> /F
-

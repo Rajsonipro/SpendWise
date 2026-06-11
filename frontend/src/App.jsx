@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyOTP from './pages/VerifyOTP';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Analytics from './pages/Analytics';
@@ -58,6 +59,14 @@ function AppRoutes() {
           element={
             <PageTransition>
               <ResetPassword />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/verify-otp"
+          element={
+            <PageTransition>
+              <VerifyOTP />
             </PageTransition>
           }
         />

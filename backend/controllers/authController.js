@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import crypto from 'crypto';
 import User from '../models/User.js';
-import { sendPasswordResetEmail } from '../utils/emailService.js';
+import { sendPasswordResetEmail, sendLoginOTPEmail } from '../utils/emailService.js';
 
 const googleClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -68,6 +68,198 @@ export const loginUser = async (req, res) => {
     return res.status(401).json({ message: 'Invalid email or password' });
   } catch (error) {
     return res.status(401).json({ message: error.message });
+  }
+};
+
+// Generate a secure 6-digit OTP and return it (plain) + hash
+const generateOTP = () => {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOTP = hashToken(otp);
+  return { otp, hashedOTP };
+};
+
+export const sendLoginOTP = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({ message: 'Please provide email and password.' });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user || !(await user.matchPassword(password))) {
+      return res.status(401).json({ message: 'Invalid email or password.' });
+    }
+
+    if (user.authProvider !== 'email') {
+      return res.status(400).json({ message: 'Please sign in with Google.' });
+    }
+
+    // Generate OTP
+    const { otp, hashedOTP } = generateOTP();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Store hashed OTP in database
+    user.loginOTP = hashedOTP;
+    user.loginOTPExpires = expiry;
+    user.loginOTPAttempts = 0;
+    await user.save();
+
+    // Send OTP via email
+    const result = await sendLoginOTPEmail(normalizedEmail, otp, user.name);
+
+    if (!result.success && !result.otp) {
+      return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+    }
+
+    // In development, return the OTP so the user can see it without email
+    const response = { message: 'Verification code sent to your email.' };
+    if (!result.success && result.otp) {
+      response.devOTP = result.otp;
+      response.message = 'SMTP not configured. Check server console for OTP.';
+    }
+    if (process.env.NODE_ENV === 'development') {
+      response.devOTP = otp;
+    }
+
+    return res.json(response);
+  } catch (error) {
+    console.error('[SendLoginOTP] Error:', error);
+    return res.status(500).json({ message: 'An error occurred. Please try again.' });
+  }
+};
+
+export const resendLoginOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: 'Please provide your email address.' });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    if (user.authProvider !== 'email') {
+      return res.status(400).json({ message: 'Please sign in with Google.' });
+    }
+
+    // Check if there's a pending OTP session (must be non-expired)
+    if (!user.loginOTPExpires || user.loginOTPExpires < new Date()) {
+      return res.status(400).json({
+        message: 'Your verification session has expired. Please sign in again to request a new code.',
+      });
+    }
+
+    // Generate a new OTP
+    const { otp, hashedOTP } = generateOTP();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+
+    user.loginOTP = hashedOTP;
+    user.loginOTPExpires = expiry;
+    user.loginOTPAttempts = 0;
+    await user.save();
+
+    // Send OTP via email
+    const result = await sendLoginOTPEmail(normalizedEmail, otp, user.name);
+
+    if (!result.success && !result.otp) {
+      return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+    }
+
+    const response = { message: 'New verification code sent to your email.' };
+    if (!result.success && result.otp) {
+      response.devOTP = result.otp;
+      response.message = 'SMTP not configured. Check server console for OTP.';
+    }
+    if (process.env.NODE_ENV === 'development') {
+      response.devOTP = otp;
+    }
+
+    return res.json(response);
+  } catch (error) {
+    console.error('[ResendLoginOTP] Error:', error);
+    return res.status(500).json({ message: 'An error occurred. Please try again.' });
+  }
+};
+
+export const verifyLoginOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !otp) {
+      return res.status(400).json({ message: 'Please provide email and verification code.' });
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ message: 'Invalid verification code format.' });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found.' });
+    }
+
+    // Check if OTP exists
+    if (!user.loginOTP || !user.loginOTPExpires) {
+      return res.status(400).json({ message: 'No verification code requested. Please request a new one.' });
+    }
+
+    // Check if OTP has expired
+    if (user.loginOTPExpires < new Date()) {
+      user.loginOTP = null;
+      user.loginOTPExpires = null;
+      user.loginOTPAttempts = 0;
+      await user.save();
+      return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
+    }
+
+    // Check attempts
+    if (user.loginOTPAttempts >= 3) {
+      user.loginOTP = null;
+      user.loginOTPExpires = null;
+      user.loginOTPAttempts = 0;
+      await user.save();
+      return res.status(429).json({ message: 'Too many failed attempts. Please request a new verification code.' });
+    }
+
+    // Verify OTP
+    const hashedOTP = hashToken(otp);
+    if (hashedOTP !== user.loginOTP) {
+      user.loginOTPAttempts = (user.loginOTPAttempts || 0) + 1;
+      await user.save();
+      const remaining = 3 - user.loginOTPAttempts;
+      return res.status(400).json({
+        message: remaining > 0
+          ? `Invalid verification code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
+          : 'Too many failed attempts. Please request a new verification code.',
+      });
+    }
+
+    // OTP verified — clear OTP fields and issue JWT
+    user.loginOTP = null;
+    user.loginOTPExpires = null;
+    user.loginOTPAttempts = 0;
+    await user.save();
+
+    return res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    console.error('[VerifyLoginOTP] Error:', error);
+    return res.status(500).json({ message: 'An error occurred. Please try again.' });
   }
 };
 

@@ -40,17 +40,15 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { login, googleLogin } = useAuth();
+  const { sendLoginOTP, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const isValidEmail = useCallback((value) => {
     const cleanedEmail = String(value || '').trim().toLowerCase();
 
-    // Basic format check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanedEmail)) return false;
 
-    // No double dots
     if (cleanedEmail.includes('..')) return false;
 
     const parts = cleanedEmail.split('@');
@@ -58,18 +56,14 @@ const Login = () => {
 
     const [localPart, domainPart] = parts;
 
-    // Local part and domain should be reasonable
     if (localPart.length < 2) return false;
     if (domainPart.length < 4) return false;
     if (!domainPart.includes('.')) return false;
 
-    // Block disposable / clearly fake domains
     if (BLOCKED_DOMAINS.has(domainPart)) return false;
 
-    // Block domains that start/end badly
     if (domainPart.startsWith('.') || domainPart.endsWith('.')) return false;
 
-    // Block emails like a@b.c
     const domainSections = domainPart.split('.');
     if (domainSections.some((section) => section.length < 2)) return false;
 
@@ -100,8 +94,8 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login(trimmedEmail, password);
-      navigate('/dashboard');
+      await sendLoginOTP(trimmedEmail, password);
+      navigate('/verify-otp', { state: { email: trimmedEmail } });
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -135,7 +129,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left panel — Branding / Hero */}
       <div
         className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12"
         style={{ background: 'var(--gradient-hero)' }}
@@ -193,7 +186,6 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Right panel — Auth Form */}
       <div className="flex-1 flex items-center justify-center p-6 bg-[var(--app-bg)]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -201,7 +193,6 @@ const Login = () => {
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="w-full max-w-sm"
         >
-          {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex p-3 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 shadow-lg shadow-indigo-500/20 mb-4">
               <TrendingUp size={28} className="text-white" />
@@ -214,7 +205,6 @@ const Login = () => {
             </p>
           </div>
 
-          {/* Desktop heading */}
           <div className="hidden lg:block mb-8">
             <h1 className="text-3xl font-bold text-[var(--app-text)] tracking-tight">
               Sign in
@@ -224,7 +214,6 @@ const Login = () => {
             </p>
           </div>
 
-          {/* Error message */}
           <AnimatePresence>
             {error && (
               <motion.div
@@ -242,9 +231,8 @@ const Login = () => {
             )}
           </AnimatePresence>
 
-          {/* Google Sign-In Button */}
-          <div className="mb-6">
-            <div className="relative group">
+          <div className="mb-6 w-full">
+            <div className="relative w-full">
               {googleLoading && (
                 <div
                   className="absolute inset-0 z-10 flex items-center justify-center rounded-xl"
@@ -256,21 +244,23 @@ const Login = () => {
                   />
                 </div>
               )}
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-                theme="outline"
-                size="large"
-                text="continue_with"
-                shape="rectangular"
-                width="200%"
-                logo_alignment="center"
-              />
+
+              <div className="google-btn-wrapper w-full overflow-hidden rounded-xl">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap={false}
+                  theme="outline"
+                  size="large"
+                  text="continue_with"
+                  shape="rectangular"
+                  width="100%"
+                  logo_alignment="left"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-[var(--app-border)]" />
@@ -282,7 +272,6 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Email / Password Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-[var(--app-text-secondary)] mb-1.5">
@@ -366,7 +355,6 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Footer — no Sign Up link */}
           <div className="mt-8 pt-6 border-t border-[var(--app-border)] text-center">
             <p className="text-xs text-[var(--app-muted)]">
               By continuing, you agree to SpendWise&apos;s{' '}

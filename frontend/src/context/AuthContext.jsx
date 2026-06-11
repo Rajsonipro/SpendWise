@@ -38,6 +38,21 @@ export const AuthProvider = ({ children }) => {
     return handleAuthResponse(data);
   };
 
+  const sendLoginOTP = async (email, password) => {
+    const { data } = await api.post('/api/auth/send-login-otp', { email, password });
+    return data;
+  };
+
+  const verifyLoginOTP = async (email, otp) => {
+    const { data } = await api.post('/api/auth/verify-login-otp', { email, otp });
+    return handleAuthResponse(data);
+  };
+
+  const resendLoginOTP = async (email) => {
+    const { data } = await api.post('/api/auth/resend-login-otp', { email });
+    return data;
+  };
+
   const googleLogin = async (credential) => {
     if (!credential) {
       throw new Error('Google credential is missing — check VITE_GOOGLE_CLIENT_ID is set');
@@ -57,7 +72,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, googleLogin, register, logout }}>
+    <AuthContext.Provider value={{ user, login, googleLogin, register, logout, sendLoginOTP, verifyLoginOTP, resendLoginOTP }}>
       {!loading && children}
     </AuthContext.Provider>
   );
