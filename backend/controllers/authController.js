@@ -50,25 +50,8 @@ export const registerUser = async (req, res) => {
 };
 
 export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-
-    const user = await User.findOne({ email: normalizedEmail });
-
-    if (user && (await user.matchPassword(password))) {
-      return res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id),
-      });
-    }
-
-    return res.status(401).json({ message: 'Invalid email or password' });
-  } catch (error) {
-    return res.status(401).json({ message: error.message });
-  }
+  // Delegate to sendLoginOTP to ensure direct login cannot bypass OTP verification
+  return sendLoginOTP(req, res);
 };
 
 // Generate a secure 6-digit OTP and return it (plain) + hash
@@ -235,8 +218,15 @@ export const verifyLoginOTP = async (req, res) => {
     const hashedOTP = hashToken(otp);
     if (hashedOTP !== user.loginOTP) {
       user.loginOTPAttempts = (user.loginOTPAttempts || 0) + 1;
-      await user.save();
       const remaining = 3 - user.loginOTPAttempts;
+
+      if (remaining <= 0) {
+        user.loginOTP = null;
+        user.loginOTPExpires = null;
+        user.loginOTPAttempts = 0;
+      }
+
+      await user.save();
       return res.status(400).json({
         message: remaining > 0
           ? `Invalid verification code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
