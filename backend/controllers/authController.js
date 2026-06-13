@@ -378,7 +378,24 @@ export const forgotPassword = async (req, res) => {
     const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
     const resetUrl = `${frontendUrl}/reset-password/${encodeURIComponent(rawToken)}`;
 
-    await sendPasswordResetEmail(normalizedEmail, resetUrl, user.name);
+    const result = await sendPasswordResetEmail(normalizedEmail, resetUrl, user.name);
+
+    if (!result.success) {
+      console.log('[ForgotPassword] Email not sent (SMTP not configured or error). Reset URL logged above.');
+
+      // In development mode, return the reset URL so the user can still test
+      if (process.env.NODE_ENV === 'development') {
+        return res.json({
+          message: 'Development mode: Reset link below (no email sent — configure SMTP for production).',
+          devResetUrl: resetUrl,
+        });
+      }
+
+      // In production, give a generic message — never leak the reset URL
+      return res.json({
+        message: 'If an account with that email exists, a password reset link has been sent.',
+      });
+    }
 
     return res.json({
       message: 'Password reset link sent to your registered email address.',

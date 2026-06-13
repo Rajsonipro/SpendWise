@@ -6,12 +6,24 @@ import connectDB from './config/db.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 // Determine allowed origins for CORS
+const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'https://spend-wise-rouge.vercel.app',
-  process.env.FRONTEND_URL?.replace(/\/+$/, ''),
+  frontendUrl,
 ].filter(Boolean);
+
+// Helper to match Vercel preview/deployment URLs (e.g. project-xxx.vercel.app)
+const isVercelOrigin = (origin) => {
+  if (!origin) return false;
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname.endsWith('.vercel.app') || hostname === 'vercel.app';
+  } catch {
+    return false;
+  }
+};
 
 import authRoutes from './routes/authRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
@@ -30,12 +42,23 @@ const app = express();
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.warn(`CORS blocked origin: ${origin}`);
-      callback(null, true); // In production, change to: callback(new Error('Not allowed by CORS'));
+    if (!origin) {
+      return callback(null, true);
     }
+    // Allow known origins
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    // Allow any Vercel deployment domain (including preview branches)
+    if (isVercelOrigin(origin)) {
+      return callback(null, true);
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`CORS allowed unknown origin (dev): ${origin}`);
+      return callback(null, true);
+    }
+    console.warn(`CORS blocked origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
