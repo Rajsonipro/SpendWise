@@ -10,6 +10,7 @@ import {
   AlertCircle,
   TrendingUp,
   Sparkles,
+  CheckCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -209,7 +210,7 @@ const VerifyOTP = () => {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="inline-flex p-5 rounded-2xl bg-white/15 backdrop-blur-sm mb-8 shadow-lg">
-              <Shield size={44} className="text-white" />
+              <CheckCircle size={44} className="text-white" />
             </div>
             <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">
               {isRegister ? 'Verify Your Email' : isGoogle ? 'Verify Google Sign-In' : 'Verify Your Identity'}
@@ -263,7 +264,7 @@ const VerifyOTP = () => {
           {/* Mobile header */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex p-3 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 shadow-lg shadow-indigo-500/20 mb-4">
-              <Shield size={28} className="text-white" />
+              <CheckCircle size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-bold text-[var(--app-text)]">
               {isRegister ? 'Verify Email' : isGoogle ? 'Google Sign-In' : 'Verify Code'}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Mail, ArrowLeft, Send, TrendingUp,  Sparkles, CheckCircle, KeyRound } from 'lucide-react';
+import { Mail, ArrowLeft, Send, TrendingUp, Sparkles, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ForgotPassword = () => {
@@ -63,8 +63,9 @@ const ForgotPassword = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-center mb-8"
-        >                <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/20 dark:shadow-amber-500/10 mb-4">
-            <KeyRound size={28} className="text-white" />
+        >
+          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10 mb-4">
+            <TrendingUp size={28} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
             SpendWise
@@ -145,7 +146,7 @@ const ForgotPassword = () => {
 
                 <div className="flex items-center gap-3 mb-6">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-500/10 dark:to-orange-500/10 border border-amber-100/50 dark:border-amber-500/10">
-                    <KeyRound size={20} className="text-amber-500" />
+                    <Sparkles size={20} className="text-amber-500" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">

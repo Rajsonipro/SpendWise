@@ -9,6 +9,7 @@ import {
   Shield,
   Eye,
   EyeOff,
+  KeyRound,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -124,9 +125,8 @@ const ResetPassword = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-center mb-8"
-        >
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10 mb-4">
-            <TrendingUp size={28} className="text-white" />
+        >                <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20 dark:shadow-emerald-500/10 mb-4">
+            <Lock size={28} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
             SpendWise
@@ -198,8 +198,8 @@ const ResetPassword = () => {
                 exit={{ opacity: 0 }}
               >
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-500/10 dark:to-purple-500/10 border border-indigo-100/50 dark:border-indigo-500/10">
-                    <Shield size={20} className="text-indigo-500" />
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-100/50 dark:border-emerald-500/10">
+                    <KeyRound size={20} className="text-emerald-500" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">

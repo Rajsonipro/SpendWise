@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Lock, ArrowRight, TrendingUp, Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, TrendingUp,  Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Register = () => {
@@ -45,15 +45,106 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left panel - Branding */}
+      {/* Left panel - Premium animated background */}
       <div
         className="hidden lg:flex lg:w-[45%] relative overflow-hidden items-center justify-center p-12"
-        style={{ background: 'var(--gradient-hero)' }}
+        style={{
+          background: 'linear-gradient(160deg, #0f0c29 0%, #1a1040 25%, #2d1b69 50%, #1a1040 75%, #0f0c29 100%)',
+        }}
       >
-        <div className="absolute inset-0 opacity-[0.06]">
-          <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-white" />
-          <div className="absolute bottom-1/3 left-1/4 w-72 h-72 rounded-full bg-white" />
-        </div>
+        {/* Animated gradient orbs */}
+        <motion.div
+          className="absolute -top-32 -right-32 w-96 h-96 rounded-full opacity-30"
+          style={{
+            background: 'radial-gradient(circle, #818cf8 0%, transparent 70%)',
+            filter: 'blur(60px)',
+          }}
+          animate={{
+            x: [0, 30, -20, 0],
+            y: [0, -40, 20, 0],
+            scale: [1, 1.1, 0.95, 1],
+          }}
+          transition={{
+            duration: 12,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+        <motion.div
+          className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full opacity-25"
+          style={{
+            background: 'radial-gradient(circle, #a78bfa 0%, transparent 70%)',
+            filter: 'blur(70px)',
+          }}
+          animate={{
+            x: [0, -30, 20, 0],
+            y: [0, 30, -40, 0],
+            scale: [1, 0.9, 1.1, 1],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/3 w-64 h-64 rounded-full opacity-20"
+          style={{
+            background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)',
+            filter: 'blur(50px)',
+          }}
+          animate={{
+            x: [0, 20, -30, 0],
+            y: [0, -20, 30, 0],
+            scale: [1, 1.15, 0.9, 1],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+
+        {/* Subtle grid pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+
+        {/* Vignette overlay */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.4) 100%)',
+          }}
+        />
+
+        {/* Floating particles */}
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-white/30"
+            style={{
+              left: `${15 + i * 14}%`,
+              top: `${20 + (i % 3) * 30}%`,
+            }}
+            animate={{
+              y: [0, -15 - i * 5, 0],
+              opacity: [0.2, 0.6, 0.2],
+            }}
+            transition={{
+              duration: 3 + i * 0.8,
+              repeat: Infinity,
+              delay: i * 0.4,
+              ease: 'easeInOut',
+            }}
+          />
+        ))}
 
         <div className="relative z-10 text-center max-w-sm">
           <motion.div
@@ -61,15 +152,19 @@ const Register = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="inline-flex p-4 rounded-2xl bg-white/10 backdrop-blur-sm mb-8 shadow-lg shadow-black/10">
-              <TrendingUp size={40} className="text-white" />
-            </div>
-            <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">Start Your Journey</h2>
-            <p className="text-white/60 text-base leading-relaxed">
+            <motion.div
+              className="inline-flex p-4 rounded-2xl bg-white/10 backdrop-blur-xl mb-8 shadow-2xl border border-white/10"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
+              <Sparkles size={40} className="text-white drop-shadow-lg" />
+            </motion.div>
+            <h2 className="text-3xl font-bold text-white mb-3 tracking-tight drop-shadow-lg">Welcome Aboard</h2>
+            <p className="text-white/65 text-base leading-relaxed drop-shadow">
               Join thousands taking control of their finances with AI-powered tracking and insights.
             </p>
 
-            <div className="mt-10 space-y-3 text-left max-w-xs mx-auto">
+            <div className="mt-12 space-y-3 text-left max-w-xs mx-auto">
               {[
                 'Free forever — no hidden charges',
                 'AI receipt scanning included',
@@ -82,7 +177,7 @@ const Register = () => {
                   transition={{ delay: 0.3 + i * 0.1 }}
                   className="flex items-center gap-3 text-white/70"
                 >
-                  <div className="p-1 rounded-full bg-white/15">
+                  <div className="p-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/10">
                     <Sparkles size={12} />
                   </div>
                   <span className="text-sm font-medium">{item}</span>
@@ -92,8 +187,8 @@ const Register = () => {
           </motion.div>
         </div>
 
-        <div className="absolute bottom-8 left-12 right-12 text-center">
-          <p className="text-white/30 text-sm font-medium">SpendWise — AI Finance Tracker</p>
+        <div className="absolute bottom-8 left-12 right-12 text-center z-10">
+          <p className="text-white/30 text-sm font-medium tracking-wider">SPENDWISE — AI FINANCE TRACKER</p>
         </div>
       </div>
 
