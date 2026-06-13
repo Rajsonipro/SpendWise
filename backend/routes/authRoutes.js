@@ -1,10 +1,12 @@
 import express from 'express';
-import { registerUser, loginUser, getMe, forgotPassword, resetPassword, googleLogin, sendLoginOTP, verifyLoginOTP, resendLoginOTP } from '../controllers/authController.js';
+import { registerUser, loginUser, getMe, forgotPassword, resetPassword, googleLogin, sendLoginOTP, verifyLoginOTP, resendLoginOTP, sendRegisterOTP, verifyRegisterOTP } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 router.post('/register', registerUser);
+router.post('/send-register-otp', sendRegisterOTP);
+router.post('/verify-register-otp', verifyRegisterOTP);
 router.post('/login', loginUser);
 router.post('/google', googleLogin);
 router.get('/me', protect, getMe);

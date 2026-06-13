@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Lock, ArrowRight, TrendingUp, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, TrendingUp, Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Register = () => {
@@ -10,14 +10,36 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { register } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { sendRegisterOTP } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!name.trim()) {
+      setError('Please enter your full name.');
+      return;
+    }
+    if (!trimmedEmail) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await register(name, email, password);
+      await sendRegisterOTP(name.trim(), trimmedEmail, password);
+      navigate('/verify-otp', { state: { email: trimmedEmail, mode: 'register', name: name.trim() } });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to register');
+      setError(err.response?.data?.message || 'Failed to register. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

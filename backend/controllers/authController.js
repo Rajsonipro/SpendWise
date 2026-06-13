@@ -2,7 +2,21 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import crypto from 'crypto';
 import User from '../models/User.js';
-import { sendPasswordResetEmail, sendLoginOTPEmail } from '../utils/emailService.js';
+import { sendPasswordResetEmail, sendLoginOTPEmail, sendOTPEmail } from '../utils/emailService.js';
+
+// In-memory store for registration OTPs (temp data before account creation)
+// Structure: { email: { name, email, password, hashedOTP, otpExpires, otpAttempts } }
+const registrationStore = new Map();
+
+// Clean up expired registrations every 5 minutes
+setInterval(() => {
+  const now = new Date();
+  for (const [email, data] of registrationStore.entries()) {
+    if (data.otpExpires < now) {
+      registrationStore.delete(email);
+    }
+  }
+}, 5 * 60 * 1000);
 
 const googleClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -101,7 +115,7 @@ export const sendLoginOTP = async (req, res) => {
     const response = { message: 'Verification code sent to your email.' };
     if (!result.success && result.otp) {
       response.devOTP = result.otp;
-      response.message = 'SMTP not configured. Check server console for OTP.';
+      response.message = 'Email service not configured. Check server console for OTP.';
     }
     if (process.env.NODE_ENV === 'development') {
       response.devOTP = otp;
@@ -159,7 +173,7 @@ export const resendLoginOTP = async (req, res) => {
     const response = { message: 'New verification code sent to your email.' };
     if (!result.success && result.otp) {
       response.devOTP = result.otp;
-      response.message = 'SMTP not configured. Check server console for OTP.';
+      response.message = 'Email service not configured. Check server console for OTP.';
     }
     if (process.env.NODE_ENV === 'development') {
       response.devOTP = otp;
@@ -503,5 +517,136 @@ export const resetPassword = async (req, res) => {
     return res.status(500).json({
       message: 'An error occurred. Please try again later.',
     });
+  }
+};
+
+// ========== Registration OTP Flow ==========
+
+export const sendRegisterOTP = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !name || !password) {
+      return res.status(400).json({ message: 'Please provide name, email, and password.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+    }
+
+    // Check if email is already taken
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: 'An account with this email already exists.' });
+    }
+
+    // Generate OTP
+    const { otp, hashedOTP } = generateOTP();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Store registration data in memory
+    registrationStore.set(normalizedEmail, {
+      name: String(name || '').trim(),
+      email: normalizedEmail,
+      password,
+      hashedOTP,
+      otpExpires: expiry,
+      otpAttempts: 0,
+    });
+
+    // Send OTP via email (purpose: 'register' so the email says "Verify Your Email")
+    const result = await sendOTPEmail(normalizedEmail, otp, name, 'register');
+
+    if (!result.success && !result.otp) {
+      registrationStore.delete(normalizedEmail);
+      return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+    }
+
+    const response = { message: 'Verification code sent to your email.' };
+    if (!result.success && result.otp) {
+      response.devOTP = result.otp;
+      response.message = 'Email service not configured. Check server console for OTP.';
+    }
+    if (process.env.NODE_ENV === 'development') {
+      response.devOTP = otp;
+    }
+
+    return res.json(response);
+  } catch (error) {
+    console.error('[SendRegisterOTP] Error:', error);
+    return res.status(500).json({ message: 'An error occurred. Please try again.' });
+  }
+};
+
+export const verifyRegisterOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !otp) {
+      return res.status(400).json({ message: 'Please provide email and verification code.' });
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ message: 'Invalid verification code format.' });
+    }
+
+    // Get registration data from memory
+    const regData = registrationStore.get(normalizedEmail);
+
+    if (!regData) {
+      return res.status(400).json({ message: 'No registration found. Please start the signup process again.' });
+    }
+
+    // Check if OTP has expired
+    if (regData.otpExpires < new Date()) {
+      registrationStore.delete(normalizedEmail);
+      return res.status(400).json({ message: 'Verification code has expired. Please sign up again.' });
+    }
+
+    // Check attempts
+    if (regData.otpAttempts >= 3) {
+      registrationStore.delete(normalizedEmail);
+      return res.status(429).json({ message: 'Too many failed attempts. Please sign up again.' });
+    }
+
+    // Verify OTP
+    const hashedOTP = hashToken(otp);
+    if (hashedOTP !== regData.hashedOTP) {
+      regData.otpAttempts = (regData.otpAttempts || 0) + 1;
+      const remaining = 3 - regData.otpAttempts;
+
+      if (remaining <= 0) {
+        registrationStore.delete(normalizedEmail);
+      }
+
+      return res.status(400).json({
+        message: remaining > 0
+          ? `Invalid verification code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
+          : 'Too many failed attempts. Please sign up again.',
+      });
+    }
+
+    // OTP verified — create the user account
+    const user = await User.create({
+      name: regData.name,
+      email: normalizedEmail,
+      password: regData.password,
+      authProvider: 'email',
+    });
+
+    // Clean up registration data
+    registrationStore.delete(normalizedEmail);
+
+    return res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    console.error('[VerifyRegisterOTP] Error:', error);
+    return res.status(500).json({ message: 'An error occurred. Please try again.' });
   }
 };

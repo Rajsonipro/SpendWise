@@ -27,15 +27,18 @@ const VerifyOTP = () => {
   const inputRefs = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifyLoginOTP, resendLoginOTP } = useAuth();
+  const { verifyLoginOTP, verifyRegisterOTP, resendLoginOTP } = useAuth();
 
   const email = location.state?.email;
+  const mode = location.state?.mode || 'login';
+  const userName = location.state?.name;
+  const isRegister = mode === 'register';
 
   useEffect(() => {
     if (!email) {
-      navigate('/login', { replace: true });
+      navigate(isRegister ? '/register' : '/login', { replace: true });
     }
-  }, [email, navigate]);
+  }, [email, navigate, isRegister]);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -115,8 +118,13 @@ const VerifyOTP = () => {
 
     setLoading(true);
     try {
-      await verifyLoginOTP(email, otpString);
-      setSuccess('Login successful! Redirecting...');
+      if (isRegister) {
+        await verifyRegisterOTP(email, otpString);
+        setSuccess('Account created successfully! Redirecting...');
+      } else {
+        await verifyLoginOTP(email, otpString);
+        setSuccess('Login successful! Redirecting...');
+      }
       setTimeout(() => navigate('/dashboard', { replace: true }), 800);
     } catch (err) {
       const message = err.response?.data?.message || 'Invalid verification code. Please try again.';
@@ -138,6 +146,12 @@ const VerifyOTP = () => {
     setOtp(['', '', '', '', '', '']);
 
     try {
+      if (isRegister) {
+        // For register, resend uses the same sendRegisterOTP with stored data
+        // For simplicity, just navigate back to register page
+        navigate('/register', { replace: true });
+        return;
+      }
       const data = await resendLoginOTP(email);
       setSuccess('New verification code sent to your email.');
       setCountdown(RESEND_COOLDOWN);
@@ -156,7 +170,7 @@ const VerifyOTP = () => {
   };
 
   const handleGoBack = () => {
-    navigate('/login');
+    navigate(isRegister ? '/register' : '/login');
   };
 
   if (!email) return null;
@@ -186,10 +200,12 @@ const VerifyOTP = () => {
               <Shield size={44} className="text-white" />
             </div>
             <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">
-              Verify Your Identity
+              {isRegister ? 'Verify Your Email' : 'Verify Your Identity'}
             </h2>
             <p className="text-white/70 text-lg leading-relaxed">
-              We've sent a secure verification code to your registered email. Enter it below to continue.
+              {isRegister
+                ? "We've sent a verification code to your email. Enter it below to activate your account."
+                : "We've sent a secure verification code to your registered email. Enter it below to continue."}
             </p>
 
             <div className="mt-10 space-y-4 text-left max-w-xs mx-auto">
@@ -236,7 +252,7 @@ const VerifyOTP = () => {
               <Shield size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-bold text-[var(--app-text)]">
-              Verify Code
+              {isRegister ? 'Verify Email' : 'Verify Code'}
             </h1>
             <p className="text-[var(--app-text-secondary)] mt-1 font-medium">
               Enter the code sent to your email
@@ -246,10 +262,14 @@ const VerifyOTP = () => {
           {/* Desktop header */}
           <div className="hidden lg:block mb-8">
             <h1 className="text-3xl font-bold text-[var(--app-text)] tracking-tight">
-              Verification
+              {isRegister ? 'Verify Your Email' : 'Verification'}
             </h1>
             <p className="text-[var(--app-text-secondary)] mt-1 font-medium">
-              Enter the 6-digit code sent to{' '}
+              {userName && isRegister ? (
+                <>Hi <span className="text-[var(--app-text)] font-semibold">{userName}</span>, enter the 6-digit code sent to{' '}</>
+              ) : (
+                <>Enter the 6-digit code sent to{' '}</>
+              )}
               <span className="text-[var(--app-text)] font-semibold">{email}</span>
             </p>
           </div>
@@ -346,11 +366,11 @@ const VerifyOTP = () => {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin" />
-                  Verifying...
+                  {isRegister ? 'Creating Account...' : 'Verifying...'}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  Verify & Sign In <ArrowRight size={16} />
+                  {isRegister ? 'Create Account' : 'Verify & Sign In'} <ArrowRight size={16} />
                 </span>
               )}
             </button>
@@ -363,6 +383,14 @@ const VerifyOTP = () => {
                   <span className="font-semibold text-[var(--app-muted)]">
                     Resend in {countdown}s
                   </span>
+                ) : isRegister ? (
+                  <button
+                    type="button"
+                    onClick={handleGoBack}
+                    className="font-semibold text-[var(--app-accent)] hover:text-[var(--app-accent-hover)] transition-colors"
+                  >
+                    Go Back & Try Again
+                  </button>
                 ) : (
                   <button
                     type="button"
@@ -387,14 +415,14 @@ const VerifyOTP = () => {
             </div>
           </form>
 
-          {/* Back to login */}
+          {/* Back button */}
           <div className="mt-8 pt-6 border-t border-[var(--app-border)] text-center">
             <button
               type="button"
               onClick={handleGoBack}
               className="text-sm font-medium text-[var(--app-muted)] hover:text-[var(--app-text-secondary)] transition-colors"
             >
-              ← Back to Sign In
+              ← Back to {isRegister ? 'Sign Up' : 'Sign In'}
             </button>
           </div>
         </motion.div>
