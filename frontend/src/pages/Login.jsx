@@ -111,8 +111,9 @@ const Login = () => {
     setGoogleLoading(true);
 
     try {
-      await googleLogin(credentialResponse.credential);
-      navigate('/dashboard');
+      const data = await googleLogin(credentialResponse.credential);
+      // backend returns the email extracted from Google credential + sends OTP
+      navigate('/verify-otp', { state: { email: data.email, mode: 'google' } });
     } catch (err) {
       setError(
         err.response?.data?.message ||

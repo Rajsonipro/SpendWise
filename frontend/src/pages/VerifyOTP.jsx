@@ -27,18 +27,19 @@ const VerifyOTP = () => {
   const inputRefs = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifyLoginOTP, verifyRegisterOTP, resendLoginOTP } = useAuth();
+  const { verifyLoginOTP, verifyRegisterOTP, verifyGoogleOTP, resendLoginOTP } = useAuth();
 
   const email = location.state?.email;
   const mode = location.state?.mode || 'login';
   const userName = location.state?.name;
   const isRegister = mode === 'register';
+  const isGoogle = mode === 'google';
 
   useEffect(() => {
     if (!email) {
       navigate(isRegister ? '/register' : '/login', { replace: true });
     }
-  }, [email, navigate, isRegister]);
+  }, [email, navigate, isRegister, isGoogle]);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -118,7 +119,10 @@ const VerifyOTP = () => {
 
     setLoading(true);
     try {
-      if (isRegister) {
+      if (isGoogle) {
+        await verifyGoogleOTP(email, otpString);
+        setSuccess('Google sign-in successful! Redirecting...');
+      } else if (isRegister) {
         await verifyRegisterOTP(email, otpString);
         setSuccess('Account created successfully! Redirecting...');
       } else {
@@ -152,6 +156,12 @@ const VerifyOTP = () => {
         navigate('/register', { replace: true });
         return;
       }
+      if (isGoogle) {
+        // For Google, resend requires re-authentication via Google
+        // Navigate back to login page
+        navigate('/login', { replace: true });
+        return;
+      }
       const data = await resendLoginOTP(email);
       setSuccess('New verification code sent to your email.');
       setCountdown(RESEND_COOLDOWN);
@@ -170,7 +180,9 @@ const VerifyOTP = () => {
   };
 
   const handleGoBack = () => {
-    navigate(isRegister ? '/register' : '/login');
+    if (isGoogle) navigate('/login');
+    else if (isRegister) navigate('/register');
+    else navigate('/login');
   };
 
   if (!email) return null;
@@ -200,12 +212,14 @@ const VerifyOTP = () => {
               <Shield size={44} className="text-white" />
             </div>
             <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">
-              {isRegister ? 'Verify Your Email' : 'Verify Your Identity'}
+              {isRegister ? 'Verify Your Email' : isGoogle ? 'Verify Google Sign-In' : 'Verify Your Identity'}
             </h2>
             <p className="text-white/70 text-lg leading-relaxed">
               {isRegister
                 ? "We've sent a verification code to your email. Enter it below to activate your account."
-                : "We've sent a secure verification code to your registered email. Enter it below to continue."}
+                : isGoogle
+                  ? "We've sent a verification code to your Google email. Enter it below to complete sign-in."
+                  : "We've sent a secure verification code to your registered email. Enter it below to continue."}
             </p>
 
             <div className="mt-10 space-y-4 text-left max-w-xs mx-auto">
@@ -252,7 +266,7 @@ const VerifyOTP = () => {
               <Shield size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-bold text-[var(--app-text)]">
-              {isRegister ? 'Verify Email' : 'Verify Code'}
+              {isRegister ? 'Verify Email' : isGoogle ? 'Google Sign-In' : 'Verify Code'}
             </h1>
             <p className="text-[var(--app-text-secondary)] mt-1 font-medium">
               Enter the code sent to your email
@@ -262,7 +276,7 @@ const VerifyOTP = () => {
           {/* Desktop header */}
           <div className="hidden lg:block mb-8">
             <h1 className="text-3xl font-bold text-[var(--app-text)] tracking-tight">
-              {isRegister ? 'Verify Your Email' : 'Verification'}
+              {isRegister ? 'Verify Your Email' : isGoogle ? 'Verify Google Sign-In' : 'Verification'}
             </h1>
             <p className="text-[var(--app-text-secondary)] mt-1 font-medium">
               {userName && isRegister ? (
@@ -370,7 +384,7 @@ const VerifyOTP = () => {
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  {isRegister ? 'Create Account' : 'Verify & Sign In'} <ArrowRight size={16} />
+                  {isRegister ? 'Create Account' : isGoogle ? 'Complete Sign-In' : 'Verify & Sign In'} <ArrowRight size={16} />
                 </span>
               )}
             </button>
@@ -383,7 +397,7 @@ const VerifyOTP = () => {
                   <span className="font-semibold text-[var(--app-muted)]">
                     Resend in {countdown}s
                   </span>
-                ) : isRegister ? (
+                ) : isRegister || isGoogle ? (
                   <button
                     type="button"
                     onClick={handleGoBack}
@@ -422,7 +436,7 @@ const VerifyOTP = () => {
               onClick={handleGoBack}
               className="text-sm font-medium text-[var(--app-muted)] hover:text-[var(--app-text-secondary)] transition-colors"
             >
-              ← Back to {isRegister ? 'Sign Up' : 'Sign In'}
+              ← Back to {isRegister ? 'Sign Up' : isGoogle ? 'Sign In' : 'Sign In'}
             </button>
           </div>
         </motion.div>

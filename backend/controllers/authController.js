@@ -8,12 +8,21 @@ import { sendPasswordResetEmail, sendLoginOTPEmail, sendOTPEmail } from '../util
 // Structure: { email: { name, email, password, hashedOTP, otpExpires, otpAttempts } }
 const registrationStore = new Map();
 
-// Clean up expired registrations every 5 minutes
+// In-memory store for Google Sign-In OTPs (temp data before account creation/linking)
+// Structure: { email: { googleId, name, email, picture, hashedOTP, otpExpires, otpAttempts } }
+const googleStore = new Map();
+
+// Clean up expired stores every 5 minutes
 setInterval(() => {
   const now = new Date();
   for (const [email, data] of registrationStore.entries()) {
     if (data.otpExpires < now) {
       registrationStore.delete(email);
+    }
+  }
+  for (const [email, data] of googleStore.entries()) {
+    if (data.otpExpires < now) {
+      googleStore.delete(email);
     }
   }
 }, 5 * 60 * 1000);
@@ -315,33 +324,40 @@ export const googleLogin = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    let user = await User.findOne({ email: normalizedEmail });
 
-    if (user) {
-      if (!user.googleId) {
-        user.googleId = googleId;
-        user.authProvider = 'google';
-        user.avatar = user.avatar || picture;
-        await user.save();
-      }
-    } else {
-      user = await User.create({
-        name: name || normalizedEmail.split('@')[0],
-        email: normalizedEmail,
-        googleId,
-        avatar: picture,
-        authProvider: 'google',
-      });
+    // Generate OTP
+    const { otp, hashedOTP } = generateOTP();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Store Google data in memory
+    googleStore.set(normalizedEmail, {
+      googleId,
+      name: name || normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      picture,
+      hashedOTP,
+      otpExpires: expiry,
+      otpAttempts: 0,
+    });
+
+    // Send OTP via email
+    const result = await sendOTPEmail(normalizedEmail, otp, name, 'login');
+
+    if (!result.success && !result.otp) {
+      googleStore.delete(normalizedEmail);
+      return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
     }
 
-    return res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      authProvider: user.authProvider,
-      token: generateToken(user._id),
-    });
+    const response = { message: 'Verification code sent to your email.', email: normalizedEmail };
+    if (!result.success && result.otp) {
+      response.devOTP = result.otp;
+      response.message = 'Email service not configured. Check server console for OTP.';
+    }
+    if (process.env.NODE_ENV === 'development') {
+      response.devOTP = otp;
+    }
+
+    return res.json(response);
   } catch (error) {
     console.error('Google login error details:', {
       message: error.message,
@@ -353,6 +369,97 @@ export const googleLogin = async (req, res) => {
     return res
       .status(401)
       .json({ message: 'Google authentication failed: ' + error.message });
+  }
+};
+
+// ========== Google OTP Verification ==========
+
+export const verifyGoogleOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !otp) {
+      return res.status(400).json({ message: 'Please provide email and verification code.' });
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ message: 'Invalid verification code format.' });
+    }
+
+    // Get Google data from memory
+    const googleData = googleStore.get(normalizedEmail);
+
+    if (!googleData) {
+      return res.status(400).json({ message: 'No Google sign-in session found. Please sign in with Google again.' });
+    }
+
+    // Check if OTP has expired
+    if (googleData.otpExpires < new Date()) {
+      googleStore.delete(normalizedEmail);
+      return res.status(400).json({ message: 'Verification code has expired. Please sign in with Google again.' });
+    }
+
+    // Check attempts
+    if (googleData.otpAttempts >= 3) {
+      googleStore.delete(normalizedEmail);
+      return res.status(429).json({ message: 'Too many failed attempts. Please sign in with Google again.' });
+    }
+
+    // Verify OTP
+    const hashedOTP = hashToken(otp);
+    if (hashedOTP !== googleData.hashedOTP) {
+      googleData.otpAttempts = (googleData.otpAttempts || 0) + 1;
+      const remaining = 3 - googleData.otpAttempts;
+
+      if (remaining <= 0) {
+        googleStore.delete(normalizedEmail);
+      }
+
+      return res.status(400).json({
+        message: remaining > 0
+          ? `Invalid verification code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
+          : 'Too many failed attempts. Please sign in with Google again.',
+      });
+    }
+
+    // OTP verified — create or link the user account
+    const { googleId, name, picture } = googleData;
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (user) {
+      // Link existing account with Google
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = 'google';
+        user.avatar = user.avatar || picture;
+        await user.save();
+      }
+    } else {
+      // Create new user with Google data
+      user = await User.create({
+        name,
+        email: normalizedEmail,
+        googleId,
+        avatar: picture,
+        authProvider: 'google',
+      });
+    }
+
+    // Clean up Google store
+    googleStore.delete(normalizedEmail);
+
+    return res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      authProvider: user.authProvider,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    console.error('[VerifyGoogleOTP] Error:', error);
+    return res.status(500).json({ message: 'An error occurred. Please try again.' });
   }
 };
 
