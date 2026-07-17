@@ -28,19 +28,19 @@ const VerifyOTP = () => {
   const inputRefs = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifyLoginOTP, verifyRegisterOTP, verifyGoogleOTP, resendLoginOTP, resendRegisterOTP, resendGoogleOTP } = useAuth();
+  const { verifyLoginOTP, verifyGoogleOTP, resendLoginOTP, resendGoogleOTP } = useAuth();
 
   const email = location.state?.email;
   const mode = location.state?.mode || 'login';
   const userName = location.state?.name;
-  const isRegister = mode === 'register';
+  const devOTP = location.state?.devOTP;
   const isGoogle = mode === 'google';
 
   useEffect(() => {
     if (!email) {
-      navigate(isRegister ? '/register' : '/login', { replace: true });
+      navigate('/login', { replace: true });
     }
-  }, [email, navigate, isRegister, isGoogle]);
+  }, [email, navigate]);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -123,9 +123,6 @@ const VerifyOTP = () => {
       if (isGoogle) {
         await verifyGoogleOTP(email, otpString);
         setSuccess('Google sign-in successful! Redirecting...');
-      } else if (isRegister) {
-        await verifyRegisterOTP(email, otpString);
-        setSuccess('Account created successfully! Redirecting...');
       } else {
         await verifyLoginOTP(email, otpString);
         setSuccess('Login successful! Redirecting...');
@@ -152,9 +149,7 @@ const VerifyOTP = () => {
 
     try {
       let data;
-      if (isRegister) {
-        data = await resendRegisterOTP(email);
-      } else if (isGoogle) {
+      if (isGoogle) {
         data = await resendGoogleOTP(email);
       } else {
         data = await resendLoginOTP(email);
@@ -166,12 +161,10 @@ const VerifyOTP = () => {
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to resend code. Please try again.';
       setError(message);
-      // If session expired, redirect to login/register
-      if (message.toLowerCase().includes('expired') || message.toLowerCase().includes('no registration') || message.toLowerCase().includes('no google')) {
+      // If session expired, redirect to login
+      if (message.toLowerCase().includes('expired') || message.toLowerCase().includes('no google')) {
         setTimeout(() => {
-          if (isRegister) navigate('/register', { replace: true });
-          else if (isGoogle) navigate('/login', { replace: true });
-          else navigate('/login', { replace: true });
+          navigate('/login', { replace: true });
         }, 2000);
       }
     } finally {
@@ -180,9 +173,7 @@ const VerifyOTP = () => {
   };
 
   const handleGoBack = () => {
-    if (isGoogle) navigate('/login');
-    else if (isRegister) navigate('/register');
-    else navigate('/login');
+    navigate('/login');
   };
 
   if (!email) return null;
@@ -212,12 +203,10 @@ const VerifyOTP = () => {
               <CheckCircle size={44} className="text-white" />
             </div>
             <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">
-              {isRegister ? 'Verify Your Email' : isGoogle ? 'Verify Google Sign-In' : 'Verify Your Identity'}
+              {isGoogle ? 'Verify Google Sign-In' : 'Verify Your Identity'}
             </h2>
             <p className="text-white/70 text-lg leading-relaxed">
-              {isRegister
-                ? "We've sent a verification code to your email. Enter it below to activate your account."
-                : isGoogle
+              {isGoogle
                   ? "We've sent a verification code to your Google email. Enter it below to complete sign-in."
                   : "We've sent a secure verification code to your registered email. Enter it below to continue."}
             </p>
@@ -266,7 +255,7 @@ const VerifyOTP = () => {
               <CheckCircle size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-bold text-[var(--app-text)]">
-              {isRegister ? 'Verify Email' : isGoogle ? 'Google Sign-In' : 'Verify Code'}
+              {isGoogle ? 'Google Sign-In' : 'Verify Code'}
             </h1>
             <p className="text-[var(--app-text-secondary)] mt-1 font-medium">
               Enter the code sent to your email
@@ -276,17 +265,33 @@ const VerifyOTP = () => {
           {/* Desktop header */}
           <div className="hidden lg:block mb-8">
             <h1 className="text-3xl font-bold text-[var(--app-text)] tracking-tight">
-              {isRegister ? 'Verify Your Email' : isGoogle ? 'Verify Google Sign-In' : 'Verification'}
+              {isGoogle ? 'Verify Google Sign-In' : 'Verification'}
             </h1>
             <p className="text-[var(--app-text-secondary)] mt-1 font-medium">
-              {userName && isRegister ? (
-                <>Hi <span className="text-[var(--app-text)] font-semibold">{userName}</span>, enter the 6-digit code sent to{' '}</>
-              ) : (
-                <>Enter the 6-digit code sent to{' '}</>
-              )}
+              <>Enter the 6-digit code sent to{' '}</>
               <span className="text-[var(--app-text)] font-semibold">{email}</span>
             </p>
           </div>
+
+          {/* Development mode OTP banner — shown when email service is not configured */}
+          {devOTP && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              className="mb-6 p-4 rounded-xl text-sm border"
+              style={{
+                background: 'var(--color-warning-soft)',
+                borderColor: 'var(--color-warning)',
+                color: 'var(--color-warning)',
+              }}
+            >
+              <p className="font-semibold mb-1">⚡ Development Mode</p>
+              <p className="text-[var(--app-text-secondary)]">Email service is not configured. Use this code to verify:</p>
+              <p className="text-2xl font-bold tracking-widest mt-3 text-center" style={{ color: 'var(--app-accent)' }}>
+                {devOTP}
+              </p>
+            </motion.div>
+          )}
 
           {/* Messages */}
           <AnimatePresence mode="wait">
@@ -380,11 +385,11 @@ const VerifyOTP = () => {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin" />
-                  {isRegister ? 'Creating Account...' : 'Verifying...'}
+                  Verifying...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  {isRegister ? 'Create Account' : isGoogle ? 'Complete Sign-In' : 'Verify & Sign In'} <ArrowRight size={16} />
+                  {isGoogle ? 'Complete Sign-In' : 'Verify & Sign In'} <ArrowRight size={16} />
                 </span>
               )}
             </button>
@@ -428,7 +433,7 @@ const VerifyOTP = () => {
               onClick={handleGoBack}
               className="text-sm font-medium text-[var(--app-muted)] hover:text-[var(--app-text-secondary)] transition-colors"
             >
-              ← Back to {isRegister ? 'Sign Up' : isGoogle ? 'Sign In' : 'Sign In'}
+              ← Back to Sign In
             </button>
           </div>
         </motion.div>

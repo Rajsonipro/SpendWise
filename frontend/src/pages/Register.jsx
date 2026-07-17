@@ -11,7 +11,7 @@ const Register = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { sendRegisterOTP } = useAuth();
+  const { registerUser } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -34,8 +34,8 @@ const Register = () => {
 
     setLoading(true);
     try {
-      await sendRegisterOTP(name.trim(), trimmedEmail, password);
-      navigate('/verify-otp', { state: { email: trimmedEmail, mode: 'register', name: name.trim() } });
+      await registerUser(name.trim(), trimmedEmail, password);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to register. Please try again.');
     } finally {

@@ -1,0 +1,12 @@
+Server running in development mode on port 5003
+MongoDB Connected: ac-gnqitgp-shard-00-00.r6ha94d.mongodb.net
+[0mGET / [32m200[0m 2.221 ms - 33[0m
+CORS allowed unknown origin (dev): http://localhost:3002
+CORS allowed unknown origin (dev): http://localhost:3002
+[0mPOST /api/auth/register [32m201[0m 322.170 ms - 293[0m
+CORS allowed unknown origin (dev): http://localhost:3002
+CORS allowed unknown origin (dev): http://localhost:3002
+CORS allowed unknown origin (dev): http://localhost:3002
+[0mGET /api/transactions [32m200[0m 84.347 ms - 2[0m
+CORS allowed unknown origin (dev): http://localhost:3002
+[0mGET /api/transactions [36m304[0m 74.793 ms - -[0m

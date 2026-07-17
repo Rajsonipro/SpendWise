@@ -4,22 +4,13 @@ import crypto from 'crypto';
 import User from '../models/User.js';
 import { sendPasswordResetEmail, sendLoginOTPEmail, sendOTPEmail } from '../utils/emailService.js';
 
-// In-memory store for registration OTPs (temp data before account creation)
-// Structure: { email: { name, email, password, hashedOTP, otpExpires, otpAttempts } }
-const registrationStore = new Map();
-
 // In-memory store for Google Sign-In OTPs (temp data before account creation/linking)
 // Structure: { email: { googleId, name, email, picture, hashedOTP, otpExpires, otpAttempts } }
 const googleStore = new Map();
 
-// Clean up expired stores every 5 minutes
+// Clean up expired Google OTP stores every 5 minutes
 setInterval(() => {
   const now = new Date();
-  for (const [email, data] of registrationStore.entries()) {
-    if (data.otpExpires < now) {
-      registrationStore.delete(email);
-    }
-  }
   for (const [email, data] of googleStore.entries()) {
     if (data.otpExpires < now) {
       googleStore.delete(email);
@@ -27,11 +18,18 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-const googleClient = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  'postmessage'
-);
+// Lazily initialize googleClient so it picks up env vars AFTER dotenv.config() runs
+let _googleClient = null;
+const getGoogleClient = () => {
+  if (!_googleClient) {
+    _googleClient = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      'postmessage'
+    );
+  }
+  return _googleClient;
+};
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
@@ -276,7 +274,7 @@ export const googleLogin = async (req, res) => {
     }
 
     // Verify the Google ID token
-    const ticket = await googleClient.verifyIdToken({
+    const ticket = await getGoogleClient().verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
@@ -598,9 +596,9 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-// ========== Registration OTP Flow ==========
+// ========== Direct Registration (No OTP) ==========
 
-export const sendRegisterOTP = async (req, res) => {
+export const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
@@ -619,163 +617,23 @@ export const sendRegisterOTP = async (req, res) => {
       return res.status(400).json({ message: 'An account with this email already exists.' });
     }
 
-    // Generate OTP
-    const { otp, hashedOTP } = generateOTP();
-    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-    // Store registration data in memory
-    registrationStore.set(normalizedEmail, {
+    // Create user directly (no OTP verification)
+    const user = await User.create({
       name: String(name || '').trim(),
       email: normalizedEmail,
       password,
-      hashedOTP,
-      otpExpires: expiry,
-      otpAttempts: 0,
-    });
-
-    // Send OTP via email (purpose: 'register' so the email says "Verify Your Email")
-    const result = await sendOTPEmail(normalizedEmail, otp, name, 'register');
-
-    if (!result.success && !result.otp) {
-      registrationStore.delete(normalizedEmail);
-      return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
-    }
-
-    const response = { message: 'Verification code sent to your email.' };
-    if (!result.success && result.otp) {
-      response.devOTP = result.otp;
-      response.message = 'Email service not configured. Check server console for OTP.';
-    }
-    if (process.env.NODE_ENV === 'development') {
-      response.devOTP = otp;
-    }
-
-    return res.json(response);
-  } catch (error) {
-    console.error('[SendRegisterOTP] Error:', error);
-    return res.status(500).json({ message: 'An error occurred. Please try again.' });
-  }
-};
-
-export const verifyRegisterOTP = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-
-    if (!normalizedEmail || !otp) {
-      return res.status(400).json({ message: 'Please provide email and verification code.' });
-    }
-
-    if (!/^\d{6}$/.test(otp)) {
-      return res.status(400).json({ message: 'Invalid verification code format.' });
-    }
-
-    // Get registration data from memory
-    const regData = registrationStore.get(normalizedEmail);
-
-    if (!regData) {
-      return res.status(400).json({ message: 'No registration found. Please start the signup process again.' });
-    }
-
-    // Check if OTP has expired
-    if (regData.otpExpires < new Date()) {
-      registrationStore.delete(normalizedEmail);
-      return res.status(400).json({ message: 'Verification code has expired. Please sign up again.' });
-    }
-
-    // Check attempts
-    if (regData.otpAttempts >= 3) {
-      registrationStore.delete(normalizedEmail);
-      return res.status(429).json({ message: 'Too many failed attempts. Please sign up again.' });
-    }
-
-    // Verify OTP
-    const hashedOTP = hashToken(otp);
-    if (hashedOTP !== regData.hashedOTP) {
-      regData.otpAttempts = (regData.otpAttempts || 0) + 1;
-      const remaining = 3 - regData.otpAttempts;
-
-      if (remaining <= 0) {
-        registrationStore.delete(normalizedEmail);
-      }
-
-      return res.status(400).json({
-        message: remaining > 0
-          ? `Invalid verification code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
-          : 'Too many failed attempts. Please sign up again.',
-      });
-    }
-
-    // OTP verified — create the user account
-    const user = await User.create({
-      name: regData.name,
-      email: normalizedEmail,
-      password: regData.password,
       authProvider: 'email',
     });
-
-    // Clean up registration data
-    registrationStore.delete(normalizedEmail);
 
     return res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
+      avatar: user.avatar,
       token: generateToken(user._id),
     });
   } catch (error) {
-    console.error('[VerifyRegisterOTP] Error:', error);
-    return res.status(500).json({ message: 'An error occurred. Please try again.' });
-  }
-};
-
-// ========== Resend OTP for Registration ==========
-
-export const resendRegisterOTP = async (req, res) => {
-  try {
-    const { email } = req.body;
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-
-    if (!normalizedEmail) {
-      return res.status(400).json({ message: 'Please provide your email address.' });
-    }
-
-    // Get existing registration data from memory
-    const regData = registrationStore.get(normalizedEmail);
-
-    if (!regData) {
-      return res.status(400).json({ message: 'No registration session found. Please sign up again.' });
-    }
-
-    // Generate a new OTP
-    const { otp, hashedOTP } = generateOTP();
-    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-    // Update store with new OTP
-    regData.hashedOTP = hashedOTP;
-    regData.otpExpires = expiry;
-    regData.otpAttempts = 0;
-    registrationStore.set(normalizedEmail, regData);
-
-    // Send OTP via email
-    const result = await sendOTPEmail(normalizedEmail, otp, regData.name, 'register');
-
-    if (!result.success && !result.otp) {
-      return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
-    }
-
-    const response = { message: 'New verification code sent to your email.' };
-    if (!result.success && result.otp) {
-      response.devOTP = result.otp;
-      response.message = 'Email service not configured. Check server console for OTP.';
-    }
-    if (process.env.NODE_ENV === 'development') {
-      response.devOTP = otp;
-    }
-
-    return res.json(response);
-  } catch (error) {
-    console.error('[ResendRegisterOTP] Error:', error);
+    console.error('[RegisterUser] Error:', error);
     return res.status(500).json({ message: 'An error occurred. Please try again.' });
   }
 };

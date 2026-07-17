@@ -33,8 +33,8 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const login = async (email, password) => {
-    const { data } = await api.post('/api/auth/login', { email, password });
+  const registerUser = async (name, email, password) => {
+    const { data } = await api.post('/api/auth/register', { name, email, password });
     return handleAuthResponse(data);
   };
 
@@ -53,16 +53,6 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const sendRegisterOTP = async (name, email, password) => {
-    const { data } = await api.post('/api/auth/send-register-otp', { name, email, password });
-    return data;
-  };
-
-  const verifyRegisterOTP = async (email, otp) => {
-    const { data } = await api.post('/api/auth/verify-register-otp', { email, otp });
-    return handleAuthResponse(data);
-  };
-
   const googleLogin = async (credential) => {
     if (!credential) {
       throw new Error('Google credential is missing — check VITE_GOOGLE_CLIENT_ID is set');
@@ -77,11 +67,6 @@ export const AuthProvider = ({ children }) => {
     return handleAuthResponse(data);
   };
 
-  const resendRegisterOTP = async (email) => {
-    const { data } = await api.post('/api/auth/resend-register-otp', { email });
-    return data;
-  };
-
   const resendGoogleOTP = async (email) => {
     const { data } = await api.post('/api/auth/resend-google-otp', { email });
     return data;
@@ -93,7 +78,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, googleLogin, verifyGoogleOTP, logout, sendLoginOTP, verifyLoginOTP, resendLoginOTP, sendRegisterOTP, verifyRegisterOTP, resendRegisterOTP, resendGoogleOTP }}>
+    <AuthContext.Provider value={{ user, registerUser, googleLogin, verifyGoogleOTP, logout, sendLoginOTP, verifyLoginOTP, resendLoginOTP, resendGoogleOTP }}>
       {!loading && children}
     </AuthContext.Provider>
   );

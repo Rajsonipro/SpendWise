@@ -94,8 +94,8 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await sendLoginOTP(trimmedEmail, password);
-      navigate('/verify-otp', { state: { email: trimmedEmail } });
+      const data = await sendLoginOTP(trimmedEmail, password);
+      navigate('/verify-otp', { state: { email: trimmedEmail, devOTP: data.devOTP } });
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -113,7 +113,7 @@ const Login = () => {
     try {
       const data = await googleLogin(credentialResponse.credential);
       // backend returns the email extracted from Google credential + sends OTP
-      navigate('/verify-otp', { state: { email: data.email, mode: 'google' } });
+      navigate('/verify-otp', { state: { email: data.email, mode: 'google', devOTP: data.devOTP } });
     } catch (err) {
       setError(
         err.response?.data?.message ||

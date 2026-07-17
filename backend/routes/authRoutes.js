@@ -1,13 +1,11 @@
 import express from 'express';
-import { loginUser, getMe, forgotPassword, resetPassword, googleLogin, sendLoginOTP, verifyLoginOTP, resendLoginOTP, sendRegisterOTP, verifyRegisterOTP, verifyGoogleOTP, resendRegisterOTP, resendGoogleOTP } from '../controllers/authController.js';
+import { loginUser, getMe, forgotPassword, resetPassword, googleLogin, sendLoginOTP, verifyLoginOTP, resendLoginOTP, registerUser, verifyGoogleOTP, resendGoogleOTP } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Registration OTP flow — no direct /register endpoint (must verify OTP first)
-router.post('/send-register-otp', sendRegisterOTP);
-router.post('/verify-register-otp', verifyRegisterOTP);
-router.post('/resend-register-otp', resendRegisterOTP);
+// Direct registration (no OTP)
+router.post('/register', registerUser);
 
 // Login OTP flow
 router.post('/login', loginUser);
