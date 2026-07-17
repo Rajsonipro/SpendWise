@@ -28,7 +28,7 @@ const VerifyOTP = () => {
   const inputRefs = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifyLoginOTP, verifyRegisterOTP, verifyGoogleOTP, resendLoginOTP } = useAuth();
+  const { verifyLoginOTP, verifyRegisterOTP, verifyGoogleOTP, resendLoginOTP, resendRegisterOTP, resendGoogleOTP } = useAuth();
 
   const email = location.state?.email;
   const mode = location.state?.mode || 'login';
@@ -151,19 +151,14 @@ const VerifyOTP = () => {
     setOtp(['', '', '', '', '', '']);
 
     try {
+      let data;
       if (isRegister) {
-        // For register, resend uses the same sendRegisterOTP with stored data
-        // For simplicity, just navigate back to register page
-        navigate('/register', { replace: true });
-        return;
+        data = await resendRegisterOTP(email);
+      } else if (isGoogle) {
+        data = await resendGoogleOTP(email);
+      } else {
+        data = await resendLoginOTP(email);
       }
-      if (isGoogle) {
-        // For Google, resend requires re-authentication via Google
-        // Navigate back to login page
-        navigate('/login', { replace: true });
-        return;
-      }
-      const data = await resendLoginOTP(email);
       setSuccess('New verification code sent to your email.');
       setCountdown(RESEND_COOLDOWN);
       setTimerActive(true);
@@ -171,9 +166,13 @@ const VerifyOTP = () => {
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to resend code. Please try again.';
       setError(message);
-      // If session expired, redirect to login
-      if (message.toLowerCase().includes('expired')) {
-        setTimeout(() => navigate('/login', { replace: true }), 2000);
+      // If session expired, redirect to login/register
+      if (message.toLowerCase().includes('expired') || message.toLowerCase().includes('no registration') || message.toLowerCase().includes('no google')) {
+        setTimeout(() => {
+          if (isRegister) navigate('/register', { replace: true });
+          else if (isGoogle) navigate('/login', { replace: true });
+          else navigate('/login', { replace: true });
+        }, 2000);
       }
     } finally {
       setResendLoading(false);
@@ -398,14 +397,6 @@ const VerifyOTP = () => {
                   <span className="font-semibold text-[var(--app-muted)]">
                     Resend in {countdown}s
                   </span>
-                ) : isRegister || isGoogle ? (
-                  <button
-                    type="button"
-                    onClick={handleGoBack}
-                    className="font-semibold text-[var(--app-accent)] hover:text-[var(--app-accent-hover)] transition-colors"
-                  >
-                    Go Back & Try Again
-                  </button>
                 ) : (
                   <button
                     type="button"

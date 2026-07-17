@@ -43,35 +43,6 @@ const hashToken = (token) => {
   return crypto.createHash('sha256').update(token).digest('hex');
 };
 
-export const registerUser = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail });
-
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-
-    const user = await User.create({
-      name: String(name || '').trim(),
-      email: normalizedEmail,
-      password,
-      authProvider: 'email',
-    });
-
-    return res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      token: generateToken(user._id),
-    });
-  } catch (error) {
-    return res.status(400).json({ message: error.message });
-  }
-};
-
 export const loginUser = async (req, res) => {
   // Delegate to sendLoginOTP to ensure direct login cannot bypass OTP verification
   return sendLoginOTP(req, res);
@@ -754,6 +725,108 @@ export const verifyRegisterOTP = async (req, res) => {
     });
   } catch (error) {
     console.error('[VerifyRegisterOTP] Error:', error);
+    return res.status(500).json({ message: 'An error occurred. Please try again.' });
+  }
+};
+
+// ========== Resend OTP for Registration ==========
+
+export const resendRegisterOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: 'Please provide your email address.' });
+    }
+
+    // Get existing registration data from memory
+    const regData = registrationStore.get(normalizedEmail);
+
+    if (!regData) {
+      return res.status(400).json({ message: 'No registration session found. Please sign up again.' });
+    }
+
+    // Generate a new OTP
+    const { otp, hashedOTP } = generateOTP();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Update store with new OTP
+    regData.hashedOTP = hashedOTP;
+    regData.otpExpires = expiry;
+    regData.otpAttempts = 0;
+    registrationStore.set(normalizedEmail, regData);
+
+    // Send OTP via email
+    const result = await sendOTPEmail(normalizedEmail, otp, regData.name, 'register');
+
+    if (!result.success && !result.otp) {
+      return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+    }
+
+    const response = { message: 'New verification code sent to your email.' };
+    if (!result.success && result.otp) {
+      response.devOTP = result.otp;
+      response.message = 'Email service not configured. Check server console for OTP.';
+    }
+    if (process.env.NODE_ENV === 'development') {
+      response.devOTP = otp;
+    }
+
+    return res.json(response);
+  } catch (error) {
+    console.error('[ResendRegisterOTP] Error:', error);
+    return res.status(500).json({ message: 'An error occurred. Please try again.' });
+  }
+};
+
+// ========== Resend OTP for Google Sign-In ==========
+
+export const resendGoogleOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: 'Please provide your email address.' });
+    }
+
+    // Get existing Google data from memory
+    const googleData = googleStore.get(normalizedEmail);
+
+    if (!googleData) {
+      return res.status(400).json({ message: 'No Google sign-in session found. Please sign in with Google again.' });
+    }
+
+    // Generate a new OTP
+    const { otp, hashedOTP } = generateOTP();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Update store with new OTP
+    googleData.hashedOTP = hashedOTP;
+    googleData.otpExpires = expiry;
+    googleData.otpAttempts = 0;
+    googleStore.set(normalizedEmail, googleData);
+
+    // Send OTP via email
+    const result = await sendOTPEmail(normalizedEmail, otp, googleData.name, 'login');
+
+    if (!result.success && !result.otp) {
+      return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+    }
+
+    const response = { message: 'New verification code sent to your email.' };
+    if (!result.success && result.otp) {
+      response.devOTP = result.otp;
+      response.message = 'Email service not configured. Check server console for OTP.';
+    }
+    if (process.env.NODE_ENV === 'development') {
+      response.devOTP = otp;
+    }
+
+    return res.json(response);
+  } catch (error) {
+    console.error('[ResendGoogleOTP] Error:', error);
     return res.status(500).json({ message: 'An error occurred. Please try again.' });
   }
 };

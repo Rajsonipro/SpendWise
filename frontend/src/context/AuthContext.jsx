@@ -77,9 +77,14 @@ export const AuthProvider = ({ children }) => {
     return handleAuthResponse(data);
   };
 
-  const register = async (name, email, password) => {
-    const { data } = await api.post('/api/auth/register', { name, email, password });
-    return handleAuthResponse(data);
+  const resendRegisterOTP = async (email) => {
+    const { data } = await api.post('/api/auth/resend-register-otp', { email });
+    return data;
+  };
+
+  const resendGoogleOTP = async (email) => {
+    const { data } = await api.post('/api/auth/resend-google-otp', { email });
+    return data;
   };
 
   const logout = () => {
@@ -88,7 +93,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, googleLogin, verifyGoogleOTP, register, logout, sendLoginOTP, verifyLoginOTP, resendLoginOTP, sendRegisterOTP, verifyRegisterOTP }}>
+    <AuthContext.Provider value={{ user, login, googleLogin, verifyGoogleOTP, logout, sendLoginOTP, verifyLoginOTP, resendLoginOTP, sendRegisterOTP, verifyRegisterOTP, resendRegisterOTP, resendGoogleOTP }}>
       {!loading && children}
     </AuthContext.Provider>
   );

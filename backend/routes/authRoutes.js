@@ -1,20 +1,30 @@
 import express from 'express';
-import { registerUser, loginUser, getMe, forgotPassword, resetPassword, googleLogin, sendLoginOTP, verifyLoginOTP, resendLoginOTP, sendRegisterOTP, verifyRegisterOTP, verifyGoogleOTP } from '../controllers/authController.js';
+import { loginUser, getMe, forgotPassword, resetPassword, googleLogin, sendLoginOTP, verifyLoginOTP, resendLoginOTP, sendRegisterOTP, verifyRegisterOTP, verifyGoogleOTP, resendRegisterOTP, resendGoogleOTP } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/register', registerUser);
+// Registration OTP flow — no direct /register endpoint (must verify OTP first)
 router.post('/send-register-otp', sendRegisterOTP);
 router.post('/verify-register-otp', verifyRegisterOTP);
+router.post('/resend-register-otp', resendRegisterOTP);
+
+// Login OTP flow
 router.post('/login', loginUser);
-router.post('/google', googleLogin);
-router.post('/verify-google-otp', verifyGoogleOTP);
-router.get('/me', protect, getMe);
 router.post('/send-login-otp', sendLoginOTP);
 router.post('/verify-login-otp', verifyLoginOTP);
 router.post('/resend-login-otp', resendLoginOTP);
+
+// Google OAuth OTP flow
+router.post('/google', googleLogin);
+router.post('/verify-google-otp', verifyGoogleOTP);
+router.post('/resend-google-otp', resendGoogleOTP);
+
+// Password reset
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
+
+// User info (protected)
+router.get('/me', protect, getMe);
 
 export default router;

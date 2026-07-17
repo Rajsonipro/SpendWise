@@ -1,4 +1,25 @@
+import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
+
+/**
+ * Creates a Nodemailer transporter using Gmail SMTP credentials from .env.
+ * Falls back to null if SMTP is not configured.
+ */
+const createSmtpTransporter = () => {
+  const host = process.env.SMTP_HOST;
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) return null;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+};
 
 /**
  * Creates a Resend client if RESEND_API_KEY is set.
@@ -137,94 +158,167 @@ const getSubject = (purpose) => {
 };
 
 /**
- * Send an OTP email via Resend API.
- * @param {string} email - recipient email
+ * Send an email via Nodemailer SMTP.
+ * @returns {{ success: boolean, message: string, otp?: string }}
+ */
+const sendViaSmtp = async ({ to, subject, text, html }) => {
+  const transporter = createSmtpTransporter();
+  if (!transporter) return null; // SMTP not configured
+
+  const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
+  const fromName = process.env.SMTP_FROM_NAME || 'SpendWise';
+
+  if (!fromEmail) return null;
+
+  try {
+    await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to,
+      subject,
+      text,
+      html,
+    });
+    return { success: true, message: 'Email sent successfully via SMTP.' };
+  } catch (err) {
+    console.error('[EmailService] SMTP error:', err.message);
+    return { success: false, message: `SMTP error: ${err.message}` };
+  }
+};
+
+/**
+ * Send an email via Resend API.
+ * @returns {{ success: boolean, message: string, otp?: string }}
+ */
+const sendViaResend = async ({ to, subject, text, html, otp }) => {
+  const resend = createResendClient();
+  if (!resend) return null; // Resend not configured
+
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+  const fromName = process.env.SMTP_FROM_NAME || 'SpendWise';
+
+  try {
+    const { error } = await resend.emails.send({
+      from: `"${fromName}" <${fromEmail}>`,
+      to: [to],
+      subject,
+      text,
+      html,
+    });
+
+    if (error) {
+      console.error('[EmailService] Resend error:', error);
+      return { success: false, message: `Resend error: ${error.message}`, otp };
+    }
+
+    return { success: true, message: 'Email sent successfully via Resend.' };
+  } catch (err) {
+    console.error('[EmailService] Resend error:', err.message);
+    return { success: false, message: `Resend error: ${err.message}`, otp };
+  }
+};
+
+/**
+ * Log the email to the server console (development fallback).
+ */
+const logToConsole = ({ to, subject, text, otp }) => {
+  console.log('');
+  console.log('═══════════════════════════════════════════════');
+  console.log(`  📧 EMAIL (No sender configured)`);
+  console.log(`  To: ${to}`);
+  console.log(`  Subject: ${subject}`);
+  console.log('───────────────────────────────────────────────');
+  if (otp) console.log(`  OTP: ${otp}`);
+  else console.log(`  Body preview: ${text.substring(0, 200)}...`);
+  console.log('═══════════════════════════════════════════════');
+  console.log('');
+};
+
+/**
+ * Send an OTP email — tries SMTP first, then Resend, then falls back to console logging.
+ * @param {string} email - recipient email (NEVER hardcoded — always the user's actual email)
  * @param {string} otp - the 6-digit OTP
  * @param {string} [userName] - recipient name (optional)
  * @param {'login'|'register'} [purpose='login'] - email purpose
  * @returns {{ success: boolean, message: string, otp?: string }}
  */
 export const sendOTPEmail = async (email, otp, userName, purpose = 'login') => {
-  const resend = createResendClient();
   const expiryMinutes = 5;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-  const fromName = process.env.SMTP_FROM_NAME || 'SpendWise';
+  const subject = getSubject(purpose);
+  const text = getOTPEmailText(otp, expiryMinutes);
+  const html = getOTPEmailHTML(otp, expiryMinutes, purpose);
 
-  if (!resend) {
-    console.log('');
-    console.log('═══════════════════════════════════════════════');
-    console.log(`  OTP (${purpose}) — Resend not configured`);
-    console.log('───────────────────────────────────────────────');
-    console.log(`  Email: ${email}`);
-    console.log(`  OTP: ${otp}`);
-    console.log(`  Expires in: ${expiryMinutes} minutes`);
-    console.log('═══════════════════════════════════════════════');
-    console.log('');
-    return { success: false, message: 'Email service not configured. OTP logged to server console.', otp };
+  const mailOptions = { to: email, subject, text, html, otp };
+
+  // 1. Try SMTP first (Gmail SMTP sends to ANY recipient)
+  const smtpResult = await sendViaSmtp(mailOptions);
+  if (smtpResult && smtpResult.success) {
+    return smtpResult;
   }
 
-  try {
-    const { error } = await resend.emails.send({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: [email],
-      subject: getSubject(purpose),
-      text: getOTPEmailText(otp, expiryMinutes),
-      html: getOTPEmailHTML(otp, expiryMinutes, purpose),
-    });
-
-    if (error) {
-      console.error(`[SendOTPEmail] Resend error:`, error);
-      return { success: false, message: `Failed to send email: ${error.message}`, otp };
-    }
-
-    return { success: true, message: 'OTP sent successfully.' };
-  } catch (err) {
-    console.error(`[SendOTPEmail] Error:`, err.message);
-    return { success: false, message: `Failed to send email: ${err.message}`, otp };
+  // 2. Fall back to Resend
+  const resendResult = await sendViaResend(mailOptions);
+  if (resendResult && resendResult.success) {
+    return resendResult;
   }
+
+  // 3. If both failed, log to console (development mode)
+  const smtpFailed = smtpResult !== null;
+  const resendFailed = resendResult !== null;
+
+  if (!smtpFailed && !resendFailed) {
+    // Neither SMTP nor Resend is configured — log OTP to console
+    logToConsole({ to: email, subject, text, otp });
+    return {
+      success: false,
+      message: 'Email service not configured. OTP logged to server console.',
+      otp,
+    };
+  }
+
+  // Both configured but both failed
+  logToConsole({ to: email, subject, text, otp });
+  return {
+    success: false,
+    message: 'Failed to send email via all available providers. OTP logged to server console.',
+    otp,
+  };
 };
 
-// Keep old names for backward compatibility with existing controllers
+// Keep old names for backward compatibility
 export const sendLoginOTPEmail = (email, otp, userName) => sendOTPEmail(email, otp, userName, 'login');
 
 /**
- * Send a password reset email via Resend API.
+ * Send a password reset email — tries SMTP first, then Resend, then console.
  * @returns {{ success: boolean, message: string }}
  */
 export const sendPasswordResetEmail = async (email, resetUrl, userName) => {
-  const resend = createResendClient();
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-  const fromName = process.env.SMTP_FROM_NAME || 'SpendWise';
+  const subject = '🔐 Reset Your SpendWise Password';
+  const text = getResetEmailText(resetUrl, userName);
+  const html = getResetEmailHTML(resetUrl, userName);
 
-  if (!resend) {
-    console.log('');
-    console.log('═══════════════════════════════════════════════');
-    console.log('  PASSWORD RESET — Resend not configured');
-    console.log('───────────────────────────────────────────────');
-    console.log(`  Email: ${email}`);
-    console.log(`  Reset URL: ${resetUrl}`);
-    console.log('═══════════════════════════════════════════════');
-    console.log('');
+  const mailOptions = { to: email, subject, text, html };
+
+  // 1. Try SMTP first
+  const smtpResult = await sendViaSmtp(mailOptions);
+  if (smtpResult && smtpResult.success) {
+    return smtpResult;
+  }
+
+  // 2. Fall back to Resend
+  const resendResult = await sendViaResend(mailOptions);
+  if (resendResult && resendResult.success) {
+    return resendResult;
+  }
+
+  // 3. Log to console as last resort
+  const smtpFailed = smtpResult !== null;
+  const resendFailed = resendResult !== null;
+
+  if (!smtpFailed && !resendFailed) {
+    logToConsole({ to: email, subject, text });
     return { success: false, message: 'Email service not configured. Reset link logged to server console.' };
   }
 
-  try {
-    const { error } = await resend.emails.send({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: [email],
-      subject: '🔐 Reset Your SpendWise Password',
-      text: getResetEmailText(resetUrl, userName),
-      html: getResetEmailHTML(resetUrl, userName),
-    });
-
-    if (error) {
-      console.error('[SendPasswordResetEmail] Resend error:', error);
-      return { success: false, message: `Failed to send email: ${error.message}` };
-    }
-
-    return { success: true, message: 'Password reset email sent successfully.' };
-  } catch (err) {
-    console.error('[SendPasswordResetEmail] Error:', err.message);
-    return { success: false, message: `Failed to send email: ${err.message}` };
-  }
+  logToConsole({ to: email, subject, text });
+  return { success: false, message: 'Failed to send email via all available providers. Reset link logged to server console.' };
 };
